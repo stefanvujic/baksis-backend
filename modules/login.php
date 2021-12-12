@@ -10,8 +10,13 @@ function login($username, $password){
 	$password = htmlentities(hash('sha256', $password), ENT_QUOTES, 'UTF-8');
 
 	//get user
-	$query_string = "SELECT ID, username as userName, email, first_name as firstName, last_name as lastName, address, city, country, postal_code as postalCode, type, thumbnail_path as thumbnailPath FROM users WHERE password = '" . $password . "' AND username = '" . $username . "'";
-	$user = mysqli_fetch_assoc(mysqli_query($con, $query_string));
+	$query_string = "SELECT ID, username as userName, email, first_name as firstName, last_name as lastName, address, city, country, postal_code as postalCode, type, thumbnail_path as thumbnailPath FROM users WHERE password = ? AND username = ?";
+	$get_user = $con->prepare($query_string);
+	$get_user->bind_param('ss', $password, $username);
+	$get_user->execute();
+
+	$result = $get_user->get_result();
+	$user = $result->fetch_assoc();
 
 	if ($user) {
 		$token_string = time() . TOKEN_SECRET . $user["ID"];

@@ -26,9 +26,9 @@ function payment($user_id=0, $waiter_id, $waiter_rating, $amount, $establishment
 
 				$response["user"] = $user;
 
-				$is_transaction_inserted = add_transaction($user->ID, $waiter_id, $establishment_id, $amount);
+				$is_transaction_inserted = add_transaction($user->ID, $waiter_id, 0, $amount);
 
-				($is_transaction_inserted) ? ($response["paymentSuccessful"] = 1) : ($response["paymentSuccessful"] = 0);		
+				($is_transaction_inserted) ? ($response["paymentSuccessful"] = 1) : ($response["paymentSuccessful"] = 0);	
 
 			}else {
 				$response["paymentSuccessful"] = 0;

@@ -5,7 +5,7 @@ header("Access-Control-Allow-Origin: *");
 header('Access-Control-Allow-Methods: GET, POST, PATCH, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept');
 
-//put these inside the switches for speed
+// put these inside the switches for speed
 require 'modules/check_code.php';
 require 'modules/check_session.php';
 require 'modules/register.php';
