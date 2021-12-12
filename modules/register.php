@@ -1,0 +1,87 @@
+<?php
+
+function register($user_data){
+	require 'mysql_auth.php';
+	require 'constants.php';
+	require 'modules/upload_thumbnail.php';
+	
+	$response = array();
+
+	//less than 14 and more than 8 or 8 characters
+	if (strlen($user_data->password) >= 8 && strlen($user_data->password) < 20) {
+		$response["passLength"] = 1;
+	}
+
+	//one uppercase
+	if (strtoupper($user_data->password) == $user_data->password) {
+		$response["passUpper"] = 1;
+	}
+
+	$username = htmlentities($user_data->username, ENT_QUOTES, 'UTF-8');
+	$password = htmlentities(hash('sha256', $user_data->password), ENT_QUOTES, 'UTF-8');
+	$email = htmlentities($user_data->email, ENT_QUOTES, 'UTF-8');
+	$name = htmlentities($user_data->name, ENT_QUOTES, 'UTF-8');
+	$surname = htmlentities($user_data->surname, ENT_QUOTES, 'UTF-8');
+	$address = htmlentities($user_data->address, ENT_QUOTES, 'UTF-8');
+	$city = htmlentities($user_data->city, ENT_QUOTES, 'UTF-8');
+	$country = htmlentities($user_data->country, ENT_QUOTES, 'UTF-8');
+	$zipCode = htmlentities($user_data->zipCode, ENT_QUOTES, 'UTF-8');
+	$userType = htmlentities($user_data->userType, ENT_QUOTES, 'UTF-8');
+
+	$user["type"] = $userType;
+
+	if (empty($_FILES["thumbnail"])) {
+		$thumbnailName = "default_avatar.png";
+	}else {
+		$thumbnail = upload_thumbnail();
+		if ($thumbnail["imgUploaded"]) {
+			$thumbnailName = $thumbnail["imgName"];
+		}else {
+			$thumbnailName["uploadError"] = 1;
+		}
+	}
+
+	//check if username exists
+	$query_string = "SELECT ID FROM users WHERE username = '".$username."'";
+	$username_exists = mysqli_fetch_assoc(mysqli_query($con, $query_string));
+	$response = $username_exists;
+
+	if ($username_exists) {
+		$response["usernameExists"] = 1;
+	}
+
+	//check if email exists
+	$query_string = "SELECT ID FROM users WHERE email = '".$email."'";
+	$email_exists = mysqli_fetch_assoc(mysqli_query($con, $query_string));
+
+	if ($email_exists) {
+		$response["emailExists"] = 1;
+	}
+
+	if (!$response["usernameExists"] && !$response["emailExists"]) {
+		$query_string = "INSERT INTO users (ID, username, email, first_name, last_name, password, address, city, country, postal_code, type, thumbnail_path) VALUES (DEFAULT, '".$username."', '".$email."', '".$name."', '".$surname."', '".$password."', '".$address."', '".$city."', '".$country."', '".$zipCode."', '".$userType."', '".$thumbnailName."')";
+		mysqli_query($con, $query_string);
+
+		//check if user created
+		$query_string = "SELECT ID, username as userName, email, first_name as firstName, last_name as lastName, address, city, country, postal_code as postalCode, type, thumbnail_path as thumbnailPath FROM users WHERE password = '" . $password . "' AND username = '" . $username . "'";
+		$user = mysqli_fetch_assoc(mysqli_query($con, $query_string));
+		
+		if ($user["ID"]) {
+			$token_string = time() . TOKEN_SECRET . $user["ID"];
+			$token = hash('sha256', $token_string);
+			$user["token"] = $token;
+			$user["thumbnailPath"] = "http://" . $_SERVER['SERVER_NAME'] . "/baksa/backend/assets/" . $thumbnailName;
+
+			//create session
+			$query_string = "INSERT INTO sessions (ID, user_id, token, timestamp) VALUES (DEFAULT, " . $user["ID"] . ", '" . $token . "', '" . time() . "');";
+			$session_created = mysqli_query($con, $query_string);
+
+			if ($session_created) {
+				$response["created"] = 1;
+				$response["user"] = $user;
+			}
+		}		
+	}
+
+	return json_encode($response);
+}
