@@ -1,9 +1,9 @@
 <?php
 
-//ESCAPE AND VALIDATE VALUES
 function payment($user_id=0, $waiter_id, $waiter_rating, $amount, $establishment_id, $register_data) {
 	require 'mysql_auth.php';
 	require 'update_rating.php';
+	require 'email/payment.php';
 
 	$response = array();
 
@@ -39,6 +39,7 @@ function payment($user_id=0, $waiter_id, $waiter_rating, $amount, $establishment
 			$is_transaction_inserted = add_transaction($user_id, $waiter_id, $establishment_id, $amount);
 
 			($is_transaction_inserted) ? ($response["paymentSuccessful"] = 1) : ($response["paymentSuccessful"] = 0);
+			payment_email("stefanvujic576@gmail.com", "stefan vujic", $amount);
 		}
 	}
 
