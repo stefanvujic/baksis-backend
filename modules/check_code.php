@@ -7,7 +7,7 @@ function check_code($code, $amount, $is_qr, $establishment_id){
 	$response = array();
 
 	if ($is_qr) {
-		$query_string = "SELECT waiter_id FROM codes WHERE code = ".$code."";
+		$query_string = "SELECT waiter_id FROM codes WHERE code = ?";
 		$code_info = $con->prepare($query_string);
 		$code_info->bind_param('s', $code);
 		$code_info->execute();
@@ -23,7 +23,7 @@ function check_code($code, $amount, $is_qr, $establishment_id){
 				$user["rating"] = get_rating($code_info["waiter_id"]);
 				$response["waiterData"] = $user;
 					
-				$query_string = "SELECT ID, username as userName, name, thumbnail_path as thumbnailPath FROM establishments WHERE ID = ".$establishment_id;
+				$query_string = "SELECT ID, username as userName, name, thumbnail_path as thumbnailPath FROM establishments WHERE ID = ?";
 				$establishment = $con->prepare($query_string);
 				$establishment->bind_param('i', $establishment_id);
 				$establishment->execute();

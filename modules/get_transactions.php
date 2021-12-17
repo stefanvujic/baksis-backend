@@ -1,6 +1,5 @@
 <?php
 
-//to do: CHECK SESSION
 function get_transactions($user_id, $token){
 	require 'mysql_auth.php';
 	require 'constants.php';
@@ -9,9 +8,11 @@ function get_transactions($user_id, $token){
 
 	$response = array();
 
-	$query_string = "SELECT * FROM transactions WHERE user_id = " . $user_id . " ORDER BY timestamp DESC";
-
-	$result = mysqli_query($con, $query_string);
+	$query_string = "SELECT * FROM transactions WHERE user_id = ? ORDER BY timestamp DESC";
+	$get_transactions = $con->prepare($query_string);
+	$get_transactions->bind_param('i', $user_id);
+	$get_transactions->execute();
+	$result = $get_transactions->get_result();
 
 	$transactions = mysqli_fetch_all($result, MYSQLI_ASSOC);
 

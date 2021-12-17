@@ -21,11 +21,17 @@ function add_rating($waiter_id, $rating) {
 		$insert_rating->bind_param('ss', $new_rating, $waiter_id);
 		$result = $insert_rating->execute();
 	}else {
-		$query_string = "INSERT INTO waiter_ratings (ID, waiter_id, 1_star, 2_star, 3_star, 4_star, 5_star) VALUES (DEFAULT, '" . $waiter_id . "', '0', '0', '0', '0', '0')";
-		$insert_ratings = mysqli_query($con, $query_string);
+		$query_string = "INSERT INTO waiter_ratings (ID, waiter_id, 1_star, 2_star, 3_star, 4_star, 5_star) VALUES (DEFAULT, ?, '0', '0', '0', '0', '0')";
 
-		$query_string = "UPDATE waiter_ratings SET " . $col_name . " = 1 WHERE waiter_id = " . $waiter_id;
-		$result = mysqli_query($con, $query_string);
+		$insert_ratings = $con->prepare($query_string);
+		$insert_ratings->bind_param('i', $waiter_id);
+		$insert_ratings->execute();		
+
+		$query_string = "UPDATE waiter_ratings SET " . $col_name . " = 1 WHERE waiter_id = ?";
+
+		$update_ratings = $con->prepare($query_string);
+		$update_ratings->bind_param('i', $waiter_id);
+		$update_ratings->execute();				
 	}
 
 	return $result;

@@ -10,7 +10,6 @@ function check_session($token, $user_id){
 	$user_id = htmlentities($user_id, ENT_QUOTES, 'UTF-8');
 
 	$query_string = "SELECT ID, timestamp FROM sessions WHERE token = ? AND user_id = ?";
-	$session = mysqli_fetch_assoc(mysqli_query($con, $query_string));
 
 	$session = $con->prepare($query_string);
 	$session->bind_param('si', $token, $user_id);

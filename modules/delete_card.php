@@ -7,10 +7,12 @@ function delete_card($user_id, $card_id, $token){
 
 	if (!json_decode(check_session($token, $user_id))->session) {die();}
 
-	$query_string = "DELETE FROM cards WHERE ID = " . $card_id;
-	$is_deleted = mysqli_fetch_assoc(mysqli_query($con, $query_string));
+	$query_string = "DELETE FROM cards WHERE ID = ?";
 
-	$is_deleted ? ($response["deleted"] = 1) : ($response["deleted"] = 0);
+	$delete_card = $con->prepare($query_string);
+	$delete_card->bind_param('i', $card_id);	
+
+	$delete_card->execute() ? ($response["deleted"] = 1) : ($response["deleted"] = 0);
 
 	return json_encode($response);
 }

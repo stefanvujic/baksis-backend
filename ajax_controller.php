@@ -5,7 +5,7 @@ header("Access-Control-Allow-Origin: *");
 header('Access-Control-Allow-Methods: GET, POST, PATCH, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept');
 
-// put these inside the switches for speed
+// These don't work when putting them inside cases, probably becouse they are used by other modules
 require 'modules/check_code.php';
 require 'modules/check_session.php';
 require 'modules/register.php';
@@ -13,7 +13,7 @@ require 'modules/register.php';
 if ($_POST) {
 	switch ($_POST["action"]) {
 		case 'register':
-			echo register(json_decode($_POST["registarData"])); // do json_decode in register.php file
+			echo register(json_decode($_POST["registarData"]));
 			break;
 		case 'payment':
 			require 'modules/payment.php';
@@ -69,5 +69,3 @@ if ($_POST) {
 			break;
 	}
 }
-
-

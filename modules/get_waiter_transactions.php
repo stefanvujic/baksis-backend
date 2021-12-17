@@ -1,17 +1,18 @@
 <?php
 
-//to do: CHECK SESSION
 function get_waiter_transactions($waiter_id, $token){
 	require 'mysql_auth.php';
 	require 'constants.php';
 
-	$response = array();
-
 	if (!json_decode(check_session($token, $waiter_id))->session) {die();}
 
-	$query_string = "SELECT * FROM transactions WHERE waiter_id = " . $waiter_id . " ORDER BY timestamp DESC";
+	$response = array();
 
-	$result = mysqli_query($con, $query_string);
+	$query_string = "SELECT * FROM transactions WHERE waiter_id = ? ORDER BY timestamp DESC";
+	$get_transactions = $con->prepare($query_string);
+	$get_transactions->bind_param('i', $waiter_id);
+	$get_transactions->execute();
+	$result = $get_transactions->get_result();
 
 	$transactions = mysqli_fetch_all($result, MYSQLI_ASSOC);
 

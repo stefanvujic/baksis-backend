@@ -4,7 +4,8 @@ function register($user_data){
 	require 'mysql_auth.php';
 	require 'constants.php';
 	require 'modules/upload_thumbnail.php';
-	
+	require 'modules/create_token.php';
+
 	$response = array();
 
 	//less than 14 and more than 8 or 8 characters
@@ -42,38 +43,51 @@ function register($user_data){
 	}
 
 	//check if username exists
-	$query_string = "SELECT ID FROM users WHERE username = '".$username."'";
-	$username_exists = mysqli_fetch_assoc(mysqli_query($con, $query_string));
-	$response = $username_exists;
+	$query_string = "SELECT ID FROM users WHERE username = ?";
+	$get_user = $con->prepare($query_string);
+	$get_user->bind_param('s', $username);
+	$get_user->execute();
+	$result = $get_user->get_result();
+	$username_exists = $result->fetch_assoc();
 
 	if ($username_exists) {
 		$response["usernameExists"] = 1;
 	}
 
 	//check if email exists
-	$query_string = "SELECT ID FROM users WHERE email = '".$email."'";
-	$email_exists = mysqli_fetch_assoc(mysqli_query($con, $query_string));
+	$query_string = "SELECT ID FROM users WHERE email = ?";
+
+	$get_user = $con->prepare($query_string);
+	$get_user->bind_param('s', $email);
+	$get_user->execute();
+	$result = $get_user->get_result();
+	$email_exists = $result->fetch_assoc();	
 
 	if ($email_exists) {
 		$response["emailExists"] = 1;
 	}
 
 	if (!$response["usernameExists"] && !$response["emailExists"]) {
-		$query_string = "INSERT INTO users (ID, username, email, first_name, last_name, password, address, city, country, postal_code, type, thumbnail_path) VALUES (DEFAULT, '".$username."', '".$email."', '".$name."', '".$surname."', '".$password."', '".$address."', '".$city."', '".$country."', '".$zipCode."', '".$userType."', '".$thumbnailName."')";
-		mysqli_query($con, $query_string);
+		$query_string = "INSERT INTO users (ID, username, email, first_name, last_name, password, address, city, country, postal_code, type, thumbnail_path) VALUES (DEFAULT, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+		$insert_user = $con->prepare($query_string);
+		$insert_user->bind_param('sssssssssss', $username, $email, $name, $surname, $password, $address, $city, $country, $zipCode, $userType, $thumbnailName);
+		$insert_user->execute();
 
 		//check if user created
-		$query_string = "SELECT ID, username as userName, email, first_name as firstName, last_name as lastName, address, city, country, postal_code as postalCode, type, thumbnail_path as thumbnailPath FROM users WHERE password = '" . $password . "' AND username = '" . $username . "'";
-		$user = mysqli_fetch_assoc(mysqli_query($con, $query_string));
+		$query_string = "SELECT ID, username as userName, email, first_name as firstName, last_name as lastName, address, city, country, postal_code as postalCode, type, thumbnail_path as thumbnailPath FROM users WHERE password = ? AND username = ?";
+
+		$get_user = $con->prepare($query_string);
+		$get_user->bind_param('ss', $password, $username);
+		$get_user->execute();
+		$result = $get_user->get_result();
+		$user = $result->fetch_assoc();				
 		
 		if ($user["ID"]) {
-			$token_string = time() . TOKEN_SECRET . $user["ID"];
-			$token = hash('sha256', $token_string);
-			$user["token"] = $token;
+			$user["token"] = create_token($user["ID"]);
 			$user["thumbnailPath"] = "http://" . $_SERVER['SERVER_NAME'] . "/baksa/backend/assets/" . $thumbnailName;
 
 			//create session
-			$query_string = "INSERT INTO sessions (ID, user_id, token, timestamp) VALUES (DEFAULT, " . $user["ID"] . ", '" . $token . "', '" . time() . "');";
+			$query_string = "INSERT INTO sessions (ID, user_id, token, timestamp) VALUES (DEFAULT, " . $user["ID"] . ", '" . $user["token"] . "', '" . time() . "');";
 			$session_created = mysqli_query($con, $query_string);
 
 			if ($session_created) {
