@@ -1,6 +1,5 @@
 <?php
 
-//PREPARE QUERIES!!!!!
 function update_user_info($user_data){
 	require 'mysql_auth.php';
 	require 'constants.php';
@@ -29,15 +28,25 @@ function update_user_info($user_data){
 			$thumbnail_name = "default_avatar.png";
 		}
 
-		$query_string = "UPDATE users SET first_name = '".$name."', last_name = '".$surname."', address = '".$address."', city = '".$city."', country = '".$country."', postal_code = '".$zipCode."', thumbnail_path = '".$thumbnail_name."' WHERE ID = " . $user_id;
-		mysqli_query($con, $query_string);
+		$query_string = "UPDATE users SET first_name = ?, last_name = ?, address = ?, city = ?, country = ?, postal_code = ?, thumbnail_path = ? WHERE ID = ?";
+		$update_user_details = $con->prepare($query_string);
+		$update_user_details->bind_param('sssssisi', $name, $surname, $address, $city, $country, $zipCode, $thumbnail_name, $user_id);
+		$update_user_details->execute();
+
 	}else {
-		$query_string = "UPDATE users SET first_name = '".$name."', last_name = '".$surname."', address = '".$address."', city = '".$city."', country = '".$country."', postal_code = '".$zipCode."'WHERE ID = " . $user_id;
-		mysqli_query($con, $query_string);
+		$query_string = "UPDATE users SET first_name = ?, last_name = ?, address = ?, city = ?, country = ?, postal_code = ? WHERE ID = ?";
+		$update_user_details = $con->prepare($query_string);
+		$update_user_details->bind_param('ssssssi', $name, $surname, $address, $city, $country, $zipCode, $user_id);
+		$update_user_details->execute();
 	}
 
-	$query_string = "SELECT ID, username as userName, email, first_name as firstName, last_name as lastName, address, city, country, postal_code as postalCode, type, thumbnail_path as thumbnailPath FROM users WHERE ID =" . $user_id;
-	$user = mysqli_fetch_assoc(mysqli_query($con, $query_string));
+	$query_string = "SELECT ID, username as userName, email, first_name as firstName, last_name as lastName, address, city, country, postal_code as postalCode, type, thumbnail_path as thumbnailPath FROM users WHERE ID = ?";
+	$get_user = $con->prepare($query_string);
+	$get_user->bind_param('i', $user_id);
+
+	$get_user->execute();
+	$result = $get_user->get_result();
+	$user = $result->fetch_assoc();	
 	
 	if ($user["ID"]) {
 		$user["token"] = $token;

@@ -14,7 +14,6 @@ function logout($token, $user_id){
 	$delete_session->execute();
 
 	$query_string = "SELECT ID FROM sessions WHERE token = ? AND user_id = ?";
-	$session_exists = mysqli_fetch_assoc(mysqli_query($con, $query_string));
 
 	$get_session = $con->prepare($query_string);
 	$get_session->bind_param('si', $token, $user);

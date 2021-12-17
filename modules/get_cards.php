@@ -7,8 +7,12 @@ function get_cards($user_id, $token){
 
 	if (!json_decode(check_session($token, $user_id))->session) {die();}
 
-	$query_string = "SELECT ID, card_number AS cardNumber, card_holder AS cardHolder, expiry_date AS cardExpiry FROM cards WHERE user_id = ".$user_id;
-	$result = mysqli_query($con, $query_string);
+	$query_string = "SELECT ID, card_number AS cardNumber, card_holder AS cardHolder, expiry_date AS cardExpiry FROM cards WHERE user_id = ?";
+	$get_cards = $con->prepare($query_string);
+	$get_cards->bind_param('i', $user_id);
+	$get_cards->execute();
+
+	$result = $get_cards->get_result();	
 
 	$cards = mysqli_fetch_all($result, MYSQLI_ASSOC);
 
