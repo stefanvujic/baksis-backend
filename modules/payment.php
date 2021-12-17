@@ -39,15 +39,24 @@ function payment($user_id=0, $waiter_id, $waiter_rating, $amount, $establishment
 			$is_transaction_inserted = add_transaction($user_id, $waiter_id, $establishment_id, $amount);
 
 			($is_transaction_inserted) ? ($response["paymentSuccessful"] = 1) : ($response["paymentSuccessful"] = 0);
-			payment_email("stefanvujic576@gmail.com", "stefan vujic", $amount);
 		}
 	}
 
-	add_rating($waiter_id, $waiter_rating);
+	if ($response["paymentSuccessful"]) {
+		$query_string = "SELECT email, first_name, last_name FROM users WHERE ID = ?";
+		$get_waiter_info = $con->prepare($query_string);
+		$get_waiter_info->bind_param('i', $waiter_id);
+		$get_waiter_info->execute();
+		$result = $get_waiter_info->get_result();
+		$waiter_info = $result->fetch_assoc();
+		$response["test"] = $waiter_info;
+		payment_email($waiter_info["email"], $waiter_info["first_name"] . " " . $waiter_info["last_name"], $amount);#
+
+		add_rating($waiter_id, $waiter_rating);
+	}	
 
 	return json_encode($response);
 }
-
 
 
 function add_transaction($user_id, $waiter_id, $establishment_id, $amount) {

@@ -24,7 +24,12 @@ function get_waiter_transactions($waiter_id, $token){
 			$response[$key]["date"] = date('d/m/Y', $transaction["timestamp"]);
 			$response[$key]["timestamp"] = $transaction["timestamp"];
 			$response[$key]["userData"] = $user;
-			$response[$key]["userData"]["thumbnailPath"] = "http://" . $_SERVER['SERVER_NAME'] . "/baksa/backend/assets/" . $user["thumbnailPath"];
+
+			if ($user["thumbnailPath"]) {
+				$response[$key]["userData"]["thumbnailPath"] = "http://" . $_SERVER['SERVER_NAME'] . "/baksa/backend/assets/" . $user["thumbnailPath"];	
+			}else {
+				$response[$key]["userData"]["thumbnailPath"] = "http://" . $_SERVER['SERVER_NAME'] . "/baksa/backend/assets/default_avatar.png";	
+			}			
 		}
 	}
 
