@@ -26,10 +26,15 @@ function login($username, $password){
 
 		if($user["type"] == "waiter") {
 			$user["rating"] = get_rating($user["ID"]);
-			
+
 			require 'create_qr_code.php';
 			$qr_url = create_qr_code($user["ID"]);
 			$user["qrCodeUrl"] = $qr_url;
+
+			$query_string = "SELECT code FROM codes WHERE waiter_id = " . $user["ID"];
+			$waiter_code = mysqli_fetch_assoc(mysqli_query($con, $query_string));
+			$user["qrCodeUrl"] = create_qr_code($waiter_code["code"]);
+
 		}
 
 		//create session
