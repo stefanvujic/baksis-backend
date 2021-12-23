@@ -4,6 +4,7 @@ function update_user_info($user_data){
 	require 'mysql_auth.php';
 	require 'constants.php';
 	require 'upload_thumbnail.php';
+	require 'get_rating.php';
 
 	$response = array();
 	$user_data = json_decode($user_data);
@@ -47,6 +48,15 @@ function update_user_info($user_data){
 	$get_user->execute();
 	$result = $get_user->get_result();
 	$user = $result->fetch_assoc();	
+
+	if ($user["type"] == "waiter") {
+		$user["rating"] = get_rating($user["ID"]);
+
+		require 'modules/create_qr_code.php';
+		$query_string = "SELECT code FROM codes WHERE waiter_id = " . $user["ID"];
+		$user_code = mysqli_fetch_assoc(mysqli_query($con, $query_string));
+		$user["qrCodeUrl"] = create_qr_code($user_code["code"]);
+	}
 	
 	if ($user["ID"]) {
 		$user["token"] = $token;

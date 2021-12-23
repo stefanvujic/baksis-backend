@@ -26,6 +26,10 @@ function login($username, $password){
 
 		if($user["type"] == "waiter") {
 			$user["rating"] = get_rating($user["ID"]);
+			
+			require 'create_qr_code.php';
+			$qr_url = create_qr_code($user["ID"]);
+			$user["qrCodeUrl"] = $qr_url;
 		}
 
 		//create session
