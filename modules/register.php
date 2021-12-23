@@ -5,6 +5,7 @@ function register($user_data){
 	require 'constants.php';
 	require 'modules/upload_thumbnail.php';
 	require 'modules/create_token.php';
+	require 'modules/create_qr_code.php';
 
 	$response = array();
 
@@ -83,6 +84,24 @@ function register($user_data){
 		$user = $result->fetch_assoc();				
 		
 		if ($user["ID"]) {
+			if ($user["type"] == "waiter") {
+				//get largest code
+				$query_string = "SELECT MAX( code ) AS max FROM codes";
+				$result = $con->query($query_string);
+				$codes = $result->fetch_assoc();
+
+				$waiter_code = $codes["max"] + 1;
+				$query_string = "INSERT INTO codes (ID, waiter_id, code) VALUES (DEFAULT, ".$user["ID"].", ".$waiter_code.")";
+				$con->query($query_string);
+
+				//send email
+				require 'email/waiter_register_email.php';
+				$qr_url = create_qr_code($waiter_code);
+
+				waiter_register_email($user["email"], $qr_url);				
+
+			}
+
 			$user["token"] = create_token($user["ID"]);
 			$user["thumbnailPath"] = "http://" . $_SERVER['SERVER_NAME'] . "/baksa/backend/assets/" . $thumbnailName;
 
