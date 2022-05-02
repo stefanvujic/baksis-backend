@@ -1,6 +1,6 @@
 <?php
 
-//secure this!!!!
+//validate this!!!!
 function upload_thumbnail() {
 	$image = array();
 	if (move_uploaded_file($_FILES['thumbnail']['tmp_name'], "/var/www/html/baksa/backend/assets/" . str_replace(" ", "_", $_FILES['thumbnail']['name']))) {

@@ -12,9 +12,22 @@ require 'modules/register.php';
 
 if ($_POST) {
 	switch ($_POST["action"]) {
+
 		case 'register':
-			echo register(json_decode($_POST["registarData"]));
+			require 'mysql_auth.php';
+			require 'classes/user.php';
+
+			$response = array();
+			
+			$User = new User($con);	
+
+			$user = $User->register($_POST["registarData"]);
+
+			($user) ? ($response["user"] = $user) : ($response["user"] = false);
+
+			echo json_encode($response);
 			break;
+
 		case 'payment':
 			require 'modules/payment.php';
 			echo payment(0, $_POST["waiterID"], $_POST["waiterRating"], $_POST["amount"], $_POST["establishmentID"], json_decode($_POST["registarData"]));
@@ -29,13 +42,28 @@ if ($_POST) {
 	$data = json_decode(file_get_contents("php://input"), true);
 
 	switch ($data["action"]) {
+
 		case 'checkCode':
 			echo check_code((int)$data["code"], $data["amount"], (bool)$data["QrCode"], (int)$data["establishmentId"]);
 			break;
+
 		case 'login':
-			require 'modules/login.php'; 
-			echo login($data["username"], $data["password"]);
+			require 'mysql_auth.php';
+			require 'classes/login.php';
+			require 'classes/session.php';
+			require 'classes/user.php';
+
+			$response = array();
+
+			$User = new User($con);	
+
+			$user = $User->login($data["username"], $data["password"]);
+
+			($user) ? ($response["user"] = $user) : ($response["user"] = false);
+
+			echo json_encode($response);
 			break;
+
 		case 'logout':
 			require 'modules/logout.php';
 			echo logout($data["token"], $data["userId"]);
@@ -56,9 +84,44 @@ if ($_POST) {
 			echo check_session($data["token"], $data["userId"]);
 			break;
 		case 'payment':
-			require 'modules/payment.php';
+			require 'modules/payment.php';				
 			echo payment($data["userId"], $data["waiterID"], $data["waiterRating"], $data["amount"], $data["establishmentID"], $data["registarData"]);
 			break;
+
+		case 'get_stats':
+			require 'mysql_auth.php';
+			require 'classes/user.php';
+
+			$response = array();
+
+			//check session TODO
+
+			$User = new User($con);
+
+			$stats = $User->stats($data["userID"], $data["type"]);
+
+			($stats) ? ($response["stats"] = $stats) : ($response["stats"] = false);
+
+			echo json_encode($response);
+			break;	
+
+		case 'get_wallet':
+			require 'mysql_auth.php';
+			require 'classes/user.php';
+
+			$response = array();
+
+			//check session TODO
+
+			$User = new User($con);
+
+			$amount = $User->wallet($data["userID"]);
+
+			($amount) ? ($response["amount"] = $amount) : ($response["amount"] = false);
+
+			echo json_encode($response);
+			break;					
+
 		case 'getTransactions':
 			require 'modules/get_transactions.php';
 			echo get_transactions($data["userId"], $data["token"]);
