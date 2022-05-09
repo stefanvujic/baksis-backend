@@ -5,10 +5,10 @@ header("Access-Control-Allow-Origin: *");
 header('Access-Control-Allow-Methods: GET, POST, PATCH, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept');
 
-// These don't work when putting them inside cases, probably becouse they are used by other modules
-require 'modules/check_code.php';
 require 'modules/check_session.php';
-require 'modules/register.php';
+require 'classes/validation.php';
+$Validate = new validation;
+
 
 if ($_POST) {
 	switch ($_POST["action"]) {
@@ -18,10 +18,22 @@ if ($_POST) {
 			require 'classes/user.php';
 
 			$response = array();
-			
-			$User = new User($con);	
+			$register_data = json_decode($_POST["registarData"]);
 
-			$user = $User->register($_POST["registarData"]);
+			if ($Validate->username($register_data->username) && 
+				$Validate->email($register_data->email) &&
+				$Validate->name($register_data->name) &&
+				$Validate->name($register_data->surname) &&
+				$Validate->password($register_data->password) &&
+				$Validate->address($register_data->address) &&
+				$Validate->city($register_data->city) &&
+				$Validate->country($register_data->country) &&
+				$Validate->postal_code($register_data->zipCode) &&
+				$Validate->avatar_img($_FILES['thumbnail']['tmp_name'], "/var/www/html/baksa/backend/assets/" . str_replace(" ", "_", $_FILES['thumbnail']['name']))) {
+
+				$User = new User($con);	
+				$user = $User->register($register_data);
+			} 
 
 			($user) ? ($response["user"] = $user) : ($response["user"] = false);
 
@@ -44,20 +56,20 @@ if ($_POST) {
 	switch ($data["action"]) {
 
 		case 'checkCode':
+			require 'modules/check_code.php';
 			echo check_code((int)$data["code"], $data["amount"], (bool)$data["QrCode"], (int)$data["establishmentId"]);
 			break;
 
 		case 'login':
 			require 'mysql_auth.php';
-			require 'classes/login.php';
-			require 'classes/session.php';
 			require 'classes/user.php';
 
 			$response = array();
 
-			$User = new User($con);	
-
-			$user = $User->login($data["username"], $data["password"]);
+			if ($Validate->username($data["username"]) && $Validate->password($data["password"])) {
+				$User = new User($con);	
+				$user = $User->login($data["username"], $data["password"]);
+			}
 
 			($user) ? ($response["user"] = $user) : ($response["user"] = false);
 
@@ -67,19 +79,7 @@ if ($_POST) {
 		case 'logout':
 			require 'modules/logout.php';
 			echo logout($data["token"], $data["userId"]);
-			break;
-		case 'addUserCard':
-			require 'modules/add_card.php';
-			echo add_card($data["userId"], $data["cardData"], $data["token"]);
-			break;
-		case 'deleteUserCard':
-			require 'modules/delete_card.php';
-			echo delete_card($data["userId"], $data["cardId"], $data["token"]);
-			break;				
-		case 'getCards':
-			require 'modules/get_cards.php';
-			echo get_cards($data["userId"], $data["token"]);
-			break;				
+			break;			
 		case 'checkSession':
 			echo check_session($data["token"], $data["userId"]);
 			break;
@@ -114,7 +114,6 @@ if ($_POST) {
 			//check session TODO
 
 			$User = new User($con);
-
 			$amount = $User->wallet($data["userID"]);
 
 			($amount) ? ($response["amount"] = $amount) : ($response["amount"] = false);
@@ -130,5 +129,39 @@ if ($_POST) {
 			require 'modules/get_waiter_transactions.php';
 			echo get_waiter_transactions($data["waiterId"], $data["token"]);
 			break;
+
+		case 'sendPasswordRecoverEmail':
+			require 'mysql_auth.php';
+			require 'classes/user.php';
+
+			$response = array();
+			$User = new User($con);
+			$user_id = $User->email_exists($data["email"]);
+
+			if ($user_id) {
+				$User->send_password_recovery_email($data["email"], $user_id);
+				$response["userExists"] = true;
+			}else {
+				$response["userExists"] = false;
+			}
+
+			echo json_encode($response);
+
+			break;
+
+		case 'changePassword':
+			require 'mysql_auth.php';
+			require 'classes/user.php';
+
+			$response = array();
+			$User = new User($con);
+
+			$response["passwordChanged"] = $User->change_password($data["password"], $data["token"]);
+
+			echo json_encode($response);
+
+			break;			
 	}
 }
+
+die();

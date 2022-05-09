@@ -9,7 +9,7 @@ class Registration
 	const DEFAULT_AVATAR_NAME = "default_avatar.png";
 
 	function __construct($CON, $user) {
-		$this->user = json_decode($user);
+		$this->user = $user;
 		$this->CON = $CON;
 	}
 

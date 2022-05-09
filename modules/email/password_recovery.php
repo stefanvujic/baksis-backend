@@ -1,12 +1,13 @@
 <?php
 
-function payment_email($recipient, $waiter_name, $amount) {
+function password_recovery_email($recipient, $token) {
 
 	$to      = $recipient;
-	$subject = 'Bakšiš je uplaćen!';
+	$subject = 'Bakšiš; Povrati šifru';
 
 	$message .= '<p>Poštovani,</p>';
-	$message .= "<p style='font-size: 21px;'>" . $amount . "rsd uplaćeno korisniku - " .$waiter_name . "</p>";
+	$message .= "<p>Zatražili ste resetovanje lozinke za pristup Vašem baksis.rs nalogu. Da biste resetovali lozinku, kliknite na link „Resetuj lozinku“ koje se nalazi ispod.</p>";
+	$message .= "<a href=https://" . $_SERVER['SERVER_NAME'] . "/povrati-lozinku?token=" . $token . ">Resetuj lozinku</a>";
 	$message .= '<p>Hvala što koristite baksis.rs</p>';
 	$message .= "<img src='http://drive.google.com/uc?export=view&id=1lNVKvttT98R6iYqWKjkszq7OcSgAzU0D' width='400' alt='Logo' title='Logo' />";
 

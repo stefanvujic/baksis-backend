@@ -14,8 +14,8 @@ function waiter_register_email($recipient, $qr_url) {
 	$message .= "<img src='http://drive.google.com/uc?export=view&id=1lNVKvttT98R6iYqWKjkszq7OcSgAzU0D' width='400' alt='Logo' title='Logo' />";
 	$message .= '</body>';
 
-	$headers = "From: admin@baksis.rs\r\n";
-	$headers .= "Reply-To: admin@baksis.rs\r\n";
+	$headers = "From: no-reply@baksis.rs\r\n";
+	$headers .= "Reply-To: no-reply@baksis.rs\r\n";
 	$headers .= "Content-Type: text/html; charset=UTF-8\r\n"; 
 	$headers .= "MIME-Version: 1.0\r\n";
 
