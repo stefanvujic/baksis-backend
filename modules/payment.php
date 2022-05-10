@@ -25,8 +25,8 @@ function payment($user_id=0, $waiter_id, $waiter_rating, $amount, $establishment
 
 			require 'classes/session.php';
 
-			$user = $User->register(json_encode($register_data));
-
+			$user = $User->register($register_data);
+			
 			if ($user) {
 				$amount_to_save = (5 / 100) * $amount;
 
@@ -64,7 +64,6 @@ function payment($user_id=0, $waiter_id, $waiter_rating, $amount, $establishment
 		$get_waiter_info->execute();
 		$result = $get_waiter_info->get_result();
 		$waiter_info = $result->fetch_assoc();
-		$response["test"] = $waiter_info;
 		payment_email($waiter_info["email"], $waiter_info["first_name"] . " " . $waiter_info["last_name"], $amount);#
 
 		add_rating($waiter_id, $waiter_rating);

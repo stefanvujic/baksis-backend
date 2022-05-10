@@ -9,7 +9,6 @@ require 'modules/check_session.php';
 require 'classes/validation.php';
 $Validate = new validation;
 
-
 if ($_POST) {
 	switch ($_POST["action"]) {
 
@@ -28,11 +27,17 @@ if ($_POST) {
 				$Validate->address($register_data->address) &&
 				$Validate->city($register_data->city) &&
 				$Validate->country($register_data->country) &&
-				$Validate->postal_code($register_data->zipCode) &&
-				$Validate->avatar_img($_FILES['thumbnail']['tmp_name'], "/var/www/html/baksa/backend/assets/" . str_replace(" ", "_", $_FILES['thumbnail']['name']))) {
+				$Validate->postal_code($register_data->zipCode)) {
 
-				$User = new User($con);	
-				$user = $User->register($register_data);
+				if ($_FILES['thumbnail']) {
+					if($Validate->avatar_img($_FILES['thumbnail']['tmp_name'], "/var/www/html/baksa/backend/assets/" . str_replace(" ", "_", $_FILES['thumbnail']['name']))){
+						$User = new User($con);	
+						$user = $User->register($register_data);
+					}
+				}else {
+						$User = new User($con);	
+						$user = $User->register($register_data);
+				}
 			} 
 
 			($user) ? ($response["user"] = $user) : ($response["user"] = false);
@@ -42,8 +47,48 @@ if ($_POST) {
 
 		case 'payment':
 			require 'modules/payment.php';
-			echo payment(0, $_POST["waiterID"], $_POST["waiterRating"], $_POST["amount"], $_POST["establishmentID"], json_decode($_POST["registarData"]));
+			if ($Validate->ID($_POST["waiterID"]) && 
+				$Validate->rating($_POST["waiterRating"]) && 
+				$Validate->amount($_POST["amount"])) {
+
+				if ($_POST["registarData"]) {
+					$register_data = json_decode($_POST["registarData"]);
+
+					if ($Validate->username($register_data->username) && 
+						$Validate->email($register_data->email) &&
+						$Validate->name($register_data->name) &&
+						$Validate->name($register_data->surname) &&
+						$Validate->password($register_data->password) &&
+						$Validate->address($register_data->address) &&
+						$Validate->city($register_data->city) &&
+						$Validate->country($register_data->country) &&
+						$Validate->postal_code($register_data->zipCode)) {
+
+						if ($_FILES['thumbnail']) {
+							if($Validate->avatar_img($_FILES['thumbnail']['tmp_name'], "/var/www/html/baksa/backend/assets/" . str_replace(" ", "_", $_FILES['thumbnail']['name']))){
+
+								echo payment(0, $_POST["waiterID"], $_POST["waiterRating"], $_POST["amount"], $_POST["establishmentID"], $register_data);
+							}else {
+								$response["paymentSuccessful"] = 0;
+								echo json_encode($response);
+							}
+						}else {
+							echo payment(0, $_POST["waiterID"], $_POST["waiterRating"], $_POST["amount"], $_POST["establishmentID"], $register_data);
+						}
+
+					}else {
+						$response["paymentSuccessful"] = 0;
+						echo json_encode($response);
+					}
+				}else {
+					echo payment(0, $_POST["waiterID"], $_POST["waiterRating"], $_POST["amount"], $_POST["establishmentID"], json_decode($_POST["registarData"]));
+				}
+			}else {
+				$response["paymentSuccessful"] = 0;
+				echo json_encode($response);
+			}
 			break;	
+
 		case 'updateUserInfo':
 			require 'modules/update_user_details.php';
 			echo update_user_info($_POST["userData"]);
