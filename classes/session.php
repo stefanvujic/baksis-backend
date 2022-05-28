@@ -65,12 +65,6 @@ class Session
 		$result = $session->get_result();
 		$session = $result->fetch_assoc();	
 
-		if ($session["timestamp"] >= strtotime(self::SESSION_LENGTH)) {
-			$expired = 0;
-		}else {
-		    $expired = 1;
-		}
-
-		return $expired;
+		return ($session["timestamp"] >= strtotime(self::SESSION_LENGTH)) ? (false) : (true);
 	}	
 }

@@ -14,10 +14,10 @@ class User
 
 	public function login($username, $password) {
 
-		require 'classes/login.php';
+		require '../classes/login.php';
 		$Login = new Login($this->CON, $username, $password);
 
-		require 'classes/session.php';
+		require '../classes/session.php';
 		$Session = new Session($this->CON, $Login->user["ID"]);
 
 		$token = $Session->start();
@@ -25,6 +25,26 @@ class User
 		if ($token) { $Login->user["token"] = $token;}			
 
 		return ($Login->user && $token) ? ($Login->user) : (false);
+	}
+
+	public function logout($token, $user_id) {
+
+		$con = $this->CON;
+
+		$query_string = "DELETE FROM sessions WHERE token = ? AND user_id = ?";
+		$delete_session = $con->prepare($query_string);
+		$delete_session->bind_param('si', $token, $user_id);
+		$delete_session->execute();
+
+		$query_string = "SELECT ID FROM sessions WHERE token = ? AND user_id = ?";
+
+		$get_session = $con->prepare($query_string);
+		$get_session->bind_param('si', $token, $user);
+		$get_session->execute();
+		$result = $get_session->get_result();
+		$session_exists = $result->fetch_assoc();
+
+		return (!$session_exists) ? (true) : (false);	
 	}
 
 	public function register($user_details) {
@@ -45,6 +65,18 @@ class User
 		}
 
 		return ($user && $token) ? ($user) : (false);
+	}
+
+	public function basic_details($user_id) {
+
+		$con = $this->CON;
+
+		$query_string = "SELECT ID, username as userName, first_name as firstName, last_name as lastName, thumbnail_path as thumbnailPath FROM users WHERE ID = " . $user_id;
+		$user = mysqli_fetch_assoc(mysqli_query($con, $query_string));
+
+		$user["thumbnailPath"] = "http://" . $_SERVER['SERVER_NAME'] . "/baksa/backend/assets/" . $user["thumbnailPath"];
+
+		return $user;	
 	}
 
 	public function rating($user_id) {
@@ -188,6 +220,16 @@ class User
 
 		return $is_inserted;
 	}		
+
+	public function id_by_numeric_code($code) {
+
+		$con = $this->CON;
+
+		$query_string = "SELECT waiter_id as ID FROM codes WHERE code = " . $code;
+		$waiter = mysqli_fetch_assoc(mysqli_query($con, $query_string));
+
+		return $waiter["ID"];
+	}
 
 	public function get_numeric_code($user_id) {
 		$con = $this->CON;
