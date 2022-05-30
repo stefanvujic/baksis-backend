@@ -23,16 +23,10 @@ function payment($user_id=0, $waiter_id, $waiter_rating, $amount, $establishment
 			//new user
 			//to do: if payment succesfull then register
 
-			require 'classes/session.php';
-
 			$user = $User->register($register_data);
 			
 			if ($user) {
-				$amount_to_save = (5 / 100) * $amount;
-
-				$session = new Session($con, $user["ID"]);
-
-				$user["token"] = $session->start();				
+				$amount_to_save = (5 / 100) * $amount;		
 
 				$response["user"] = $user;
 

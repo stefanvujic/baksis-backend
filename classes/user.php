@@ -35,14 +35,14 @@ class User
 
 		if ($user["type"] == "waiter") {
 			$this->create_wallet($user["ID"]);
-
-			require 'classes/session.php';
-			$Session = new Session($this->CON, $user["ID"]);
-
-			$token = $Session->start();
-
-			$user["token"] = $token;	
 		}
+
+		require 'classes/session.php';
+		$Session = new Session($this->CON, $user["ID"]);
+
+		$token = $Session->start();
+
+		$user["token"] = $token;			
 
 		return ($user && $token) ? ($user) : (false);
 	}

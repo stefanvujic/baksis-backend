@@ -49,20 +49,18 @@ class User
 
 	public function register($user_details) {
 		
-		require 'classes/registration.php';
+		require '../classes/registration.php';
 		$registration = new Registration($this->CON, $user_details);
 		$user = $registration->create_user();
 
+		require '../classes/session.php';
+		$Session = new Session($this->CON, $user["ID"]);
+		$token = $Session->start();
+		$user["token"] = $token;			
+
 		if ($user["type"] == "waiter") {
 			$this->create_wallet($user["ID"]);
-
-			require 'classes/session.php';
-			$Session = new Session($this->CON, $user["ID"]);
-
-			$token = $Session->start();
-
-			$user["token"] = $token;	
-		}
+		}		
 
 		return ($user && $token) ? ($user) : (false);
 	}
@@ -71,7 +69,7 @@ class User
 
 		$con = $this->CON;
 
-		$query_string = "SELECT ID, username as userName, first_name as firstName, last_name as lastName, thumbnail_path as thumbnailPath FROM users WHERE ID = " . $user_id;
+		$query_string = "SELECT ID, username as userName, email, first_name as firstName, last_name as lastName, thumbnail_path as thumbnailPath FROM users WHERE ID = " . $user_id;
 		$user = mysqli_fetch_assoc(mysqli_query($con, $query_string));
 
 		$user["thumbnailPath"] = "http://" . $_SERVER['SERVER_NAME'] . "/baksa/backend/assets/" . $user["thumbnailPath"];
@@ -106,6 +104,44 @@ class User
 		
 		return $rating;
 	}
+
+	public function add_rating($waiter_id, $rating) {
+
+		$con = $this->CON;
+
+		$col_name = $rating . "_star";
+		$query_string = "SELECT " . $col_name . " FROM waiter_ratings WHERE waiter_id = ?";
+
+		$get_ratings = $con->prepare($query_string);
+		$get_ratings->bind_param('s', $waiter_id);
+
+		$get_ratings->execute();
+		$result = $get_ratings->get_result();
+		$ratings = $result->fetch_assoc();
+
+		if ($ratings) { // if already has ratings
+			$new_rating = $ratings[$col_name] + 1;
+			$query_string = "UPDATE waiter_ratings SET " . $col_name . " = ? WHERE waiter_id = ?";
+
+			$insert_rating = $con->prepare($query_string);
+			$insert_rating->bind_param('ss', $new_rating, $waiter_id);
+			$result = $insert_rating->execute();
+		}else {
+			$query_string = "INSERT INTO waiter_ratings (ID, waiter_id, 1_star, 2_star, 3_star, 4_star, 5_star) VALUES (DEFAULT, ?, '0', '0', '0', '0', '0')";
+
+			$insert_ratings = $con->prepare($query_string);
+			$insert_ratings->bind_param('i', $waiter_id);
+			$insert_ratings->execute();		
+
+			$query_string = "UPDATE waiter_ratings SET " . $col_name . " = 1 WHERE waiter_id = ?";
+
+			$update_ratings = $con->prepare($query_string);
+			$update_ratings->bind_param('i', $waiter_id);
+			$update_ratings->execute();				
+		}
+
+		return $result;
+	}	
 
 	public function stats($user_id, $user_type) {
 
@@ -219,7 +255,19 @@ class User
 		$is_inserted = $con->query($query_string);	
 
 		return $is_inserted;
-	}		
+	}
+
+	public function add_transaction($user_id, $waiter_id, $amount) {
+
+		$con = $this->CON;
+
+		$query_string = "INSERT INTO transactions (ID, user_id, waiter_id, establishment_id, amount, timestamp) VALUES (DEFAULT, ?, ?, 0, ?, " . time() . ")";
+
+		$insert_transaction = $con->prepare($query_string);
+		$insert_transaction->bind_param('sss', $user_id, $waiter_id, $amount);
+
+		return $insert_transaction->execute();
+	}
 
 	public function id_by_numeric_code($code) {
 

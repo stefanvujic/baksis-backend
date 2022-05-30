@@ -67,13 +67,13 @@ if ($_POST) {
 						if ($_FILES['thumbnail']) {
 							if($Validate->avatar_img($_FILES['thumbnail']['tmp_name'], "/var/www/html/baksa/backend/assets/" . str_replace(" ", "_", $_FILES['thumbnail']['name']))){
 
-								echo payment(0, $_POST["waiterID"], $_POST["waiterRating"], $_POST["amount"], $_POST["establishmentID"], $register_data);
+								echo payment(0, $_POST["waiterID"], $_POST["waiterRating"], $_POST["amount"], 0, $register_data);
 							}else {
 								$response["paymentSuccessful"] = 0;
 								echo json_encode($response);
 							}
 						}else {
-							echo payment(0, $_POST["waiterID"], $_POST["waiterRating"], $_POST["amount"], $_POST["establishmentID"], $register_data);
+							echo payment(0, $_POST["waiterID"], $_POST["waiterRating"], $_POST["amount"], 0, $register_data);
 						}
 
 					}else {
