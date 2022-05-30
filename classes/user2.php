@@ -269,6 +269,43 @@ class User
 		return $insert_transaction->execute();
 	}
 
+	public function get_transactions($user_id, $user_type) {
+
+		$con = $this->CON;
+
+		$query_string = ($user_type == "waiter") ? ("SELECT * FROM transactions WHERE waiter_id = ? ORDER BY timestamp DESC") : ("SELECT * FROM transactions WHERE user_id = ? ORDER BY timestamp DESC");
+		$get_transactions = $con->prepare($query_string);
+		$get_transactions->bind_param('i', $user_id);
+		$get_transactions->execute();
+		$result = $get_transactions->get_result();
+
+		$raw_transactions = mysqli_fetch_all($result, MYSQLI_ASSOC);
+
+		if (!$raw_transactions) {
+			return false;
+		}
+
+		$transactions = array();
+		foreach ($raw_transactions as $key => $transaction) {
+			$query_string = ($user_type == "waiter") ? ("SELECT ID, first_name as firstName, last_name as lastName, thumbnail_path as thumbnailPath FROM users WHERE ID = " . $transaction["user_id"]) : ("SELECT ID, first_name as firstName, last_name as lastName, thumbnail_path as thumbnailPath FROM users WHERE ID = " . $transaction["waiter_id"]);
+			$user = mysqli_fetch_assoc(mysqli_query($con, $query_string));
+
+			$transactions[$key]["amount"] = $transaction["amount"];
+			$transactions[$key]["date"] = date('d/m/Y', $transaction["timestamp"]);
+			$transactions[$key]["timestamp"] = $transaction["timestamp"];
+			$transactions[$key]["data"] = $user;
+			
+			if ($user["thumbnailPath"]) {
+				$transactions[$key]["data"]["thumbnailPath"] = "http://" . $_SERVER['SERVER_NAME'] . "/baksa/backend/assets/" . $user["thumbnailPath"];	
+			}else {
+				$transactions[$key]["data"]["thumbnailPath"] = "http://" . $_SERVER['SERVER_NAME'] . "/baksa/backend/assets/default_avatar.png";	
+			}
+		}
+
+		return $transactions;		
+
+	}	
+
 	public function id_by_numeric_code($code) {
 
 		$con = $this->CON;
