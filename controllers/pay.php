@@ -78,15 +78,6 @@ if (!$User->add_funds($_POST["waiterID"], $_POST["amount"])) {
 	die();		
 }
 
-if (!$Validate->ID($_POST["waiterID"]) ||
-	!$Validate->rating($_POST["waiterRating"]) ||
-	!$Validate->amount($_POST["amount"])) {
-
-	$response["paymentSuccessful"] = false;
-	echo json_encode($response);
-	die();
-} 
-
 if ($_POST["userId"]) {$user_id = $_POST["userId"];}
 if ($user["ID"]) {$user_id = $user["ID"];}
 if (!$user["ID"] && !$_POST["userId"]) {$user_id=0;}

@@ -42,8 +42,6 @@ class Registration
 
 	public function create_user() {
 
-		//TODO if usertype normal user then dont generate numeric code
-
 		if (!$this->email_exists() && !$this->username_exists()) {
 
 			$con = $this->CON;
