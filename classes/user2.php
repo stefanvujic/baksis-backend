@@ -7,6 +7,7 @@ class User
 {	
 
 	private $CON;
+	const DEFAULT_AVATAR_NAME = "default_avatar.png";
 
 	function __construct($CON) {
 		$this->CON = $CON;
@@ -65,12 +66,52 @@ class User
 		return ($user && $token) ? ($user) : (false);
 	}
 
+	public function upload_thumbnail() {
+
+		$thumbnail = array();
+
+		if ($_FILES["thumbnail"]) {
+			if (move_uploaded_file($_FILES['thumbnail']['tmp_name'], "/var/www/html/baksa/backend/assets/" . str_replace(" ", "_", $_FILES['thumbnail']['name']))) {
+				$thumbnail["path"] = "http://" . $_SERVER['SERVER_NAME'] . "/baksa/backend/assets/" . str_replace(" ", "_", $_FILES['thumbnail']['name']);
+				$thumbnail["name"] = str_replace(" ", "_", $_FILES['thumbnail']['name']);
+			} else {
+				$thumbnail = false;
+			}
+		}else {
+			$thumbnail["path"] = "http://" . $_SERVER['SERVER_NAME'] . "/baksa/backend/assets/" . self::DEFAULT_AVATAR_NAME;
+			$thumbnail["name"] = self::DEFAULT_AVATAR_NAME;
+		}
+
+		return $thumbnail["name"];
+	}	
+
+	public function update_details($details, $thumbnail) {
+
+		$con = $this->CON;
+
+		if ($thumbnail) {
+			$query_string = "UPDATE users SET first_name = ?, last_name = ?, address = ?, city = ?, country = ?, postal_code = ?, thumbnail_path = ? WHERE ID = ?";
+			$update_user_details = $con->prepare($query_string);
+			$update_user_details->bind_param('sssssisi', $details->firstName, $details->lastName, $details->address, $details->city, $details->country, $details->zipCode, $thumbnail, $details->ID);
+		}else {
+			$query_string = "UPDATE users SET first_name = ?, last_name = ?, address = ?, city = ?, country = ?, postal_code = ? WHERE ID = ?";
+			$update_user_details = $con->prepare($query_string);
+			$update_user_details->bind_param('ssssssi', $details->firstName, $details->lastName, $details->address, $details->city, $details->country, $details->zipCode, $details->ID);
+		}
+
+		return $update_user_details->execute();	
+	}		
+
 	public function basic_details($user_id) {
 
 		$con = $this->CON;
 
-		$query_string = "SELECT ID, username as userName, email, first_name as firstName, last_name as lastName, thumbnail_path as thumbnailPath FROM users WHERE ID = " . $user_id;
-		$user = mysqli_fetch_assoc(mysqli_query($con, $query_string));
+		$query_string = "SELECT ID, type, username as userName, email, first_name as firstName, last_name as lastName, address, country, city, postal_code as postalCode, thumbnail_path as thumbnailPath FROM users WHERE ID = " . $user_id;
+		$get_user = $con->prepare($query_string);
+		$get_user->bind_param('i', $user_id);
+		$get_user->execute();
+		$result = $get_user->get_result();
+		$user = $result->fetch_assoc();		
 
 		$user["thumbnailPath"] = "http://" . $_SERVER['SERVER_NAME'] . "/baksa/backend/assets/" . $user["thumbnailPath"];
 
@@ -367,8 +408,9 @@ class User
 		$token = $this->generate_recovery_token($user_id);
 
 		if ($token) {
-			require 'modules/email/password_recovery.php';
+			require '../emails/password_recovery.php';
 			password_recovery_email($email, $token);
+			//TODO: DELETE RECOVERY CODE
 		}
 	}
 

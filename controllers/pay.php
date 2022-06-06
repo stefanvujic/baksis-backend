@@ -1,5 +1,5 @@
 <?php
-
+// TO DO: CHECK SESSION IF LOGGED IN!!!!!
 header("Access-Control-Allow-Origin: *");
 header('Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept');
 
