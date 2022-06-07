@@ -58,7 +58,9 @@ class Registration
 				$user["thumbnailPath"] = $thumbnail["path"];
 				if ($user["type"] == "waiter") {
 					$numeric_code = $this->generate_numeric_code();
-					$this->waiter_email(User::generate_qr_code_path($numeric_code));	
+					$qr_code_url = User::generate_qr_code_path($numeric_code);
+					$user["qrCodeUrl"] = $qr_code_url;
+					$this->waiter_email($qr_code_url);
 				}				
 			}
 
