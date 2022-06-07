@@ -5,9 +5,9 @@ header('Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Ac
 
 require '../mysql_auth.php';
 
-require '../classes/user2.php'; // change to 1 but remember to change path in classes
-require '../classes/validation2.php'; // change to 1 but remember to change path in classes
-require '../modules/email/payment.php';
+require '../classes/user.php';
+require '../classes/validation.php';
+require '../emails/payment.php';
 
 
 $Validate = new validation;

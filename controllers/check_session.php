@@ -6,8 +6,8 @@ header('Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Ac
 require '../mysql_auth.php';
 
 require '../classes/session.php';
-require '../classes/user2.php'; // change to 1 but remember to change path in classes
-require '../classes/validation2.php'; // change to 1 but remember to change path in classes
+require '../classes/user.php';
+require '../classes/validation.php';
 
 $Validate = new validation;
 
@@ -21,8 +21,8 @@ if(!$Validate->token($data["token"]) || !$Validate->ID($data["userId"])) {
 	die();
 }
 
-$Session = new Session($con, $data["token"]);
-if($Session->is_expired()) {
+$Session = new Session($con, $data["userId"]);
+if($Session->is_expired($data["token"])) {
 	$response["session"] = false;
 	echo json_encode($response);
 	die();
