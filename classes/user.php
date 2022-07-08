@@ -302,7 +302,7 @@ class User
 
 		$con = $this->CON;
 
-		$query_string = "INSERT INTO transactions (ID, user_id, waiter_id, establishment_id, amount, timestamp) VALUES (DEFAULT, ?, ?, 0, ?, " . time() . ")";
+		$query_string = "INSERT INTO transactions (ID, user_id, waiter_id, establishment_id, wspay_id, amount, timestamp) VALUES (DEFAULT, ?, ?, 0, 0, ?, " . time() . ")";
 
 		$insert_transaction = $con->prepare($query_string);
 		$insert_transaction->bind_param('sss', $user_id, $waiter_id, $amount);
