@@ -55,7 +55,7 @@ class Validation
 	}		
 
 	public function amount($amount) {
-		(v::intVal()->between(100, 999999)->validate($amount)) ? ($validated = true) : ($validated = false);
+		(v::intVal()->between(100, 99999999)->validate($amount)) ? ($validated = true) : ($validated = false);
 		return $validated;
 	}
 	public function ID($ID) {
