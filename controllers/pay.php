@@ -8,89 +8,74 @@ require '../mysql_auth.php';
 require '../classes/user.php';
 require '../classes/validation.php';
 require '../emails/payment.php';
+require '../classes/WSPay.php';
 
 
 $Validate = new validation;
+$WSPay = new WSPay($con);
 $User = new User($con);
 
 $response = array();
 
-$register_data = json_decode($_POST["registarData"]);
+$data = json_decode(file_get_contents("php://input"), true);
 
-if (!$Validate->ID($_POST["waiterID"]) ||
-	!$Validate->rating($_POST["waiterRating"]) ||
-	!$Validate->amount($_POST["amount"])) {
+if (!$Validate->ID($data["waiterID"]) ||
+	!$Validate->rating($data["waiterRating"]) ||
+	!$Validate->amount($data["amount"])) {
 
 	$response["paymentSuccessful"] = false;
 	echo json_encode($response);
 	die();
 } 
 
-if ($_POST["userId"]) {
-	if (!$Validate->ID($_POST["userId"])) {
+if ($data["userId"]) {
+	if (!$Validate->ID($data["userId"])) {
 		$response["paymentSuccessful"] = false;
 		echo json_encode($response);		
 		die();
 	}
 }
 
-if ($register_data) {
-	if (!$Validate->username($register_data->username) || 
-		!$Validate->email($register_data->email) ||
-		!$Validate->name($register_data->name) ||
-		!$Validate->name($register_data->surname) ||
-		!$Validate->password($register_data->password) ||
-		!$Validate->address($register_data->address) ||
-		!$Validate->city($register_data->city) ||
-		!$Validate->country($register_data->country) ||
-		!$Validate->postal_code($register_data->zipCode)) {
+$WSPay->set_amount($data["amount"]);
 
-		$response["paymentSuccessful"] = false;
-		echo json_encode($response);
-		die();
-	}
 
-	$user = $User->register($register_data);
+//TODO: check if transaction exists!!!
+//TODO: validate signiture and wspay id!!!!!
+// $transaction_complete = $WSPay->check_transaction($data["WSPayID"], $data["signature"]);
+// if(!$transaction_complete) {
+// 	$response["transaction"] = false;
+// 	echo json_encode($response);
+// 	die();
+// }
 
-	if (!$user) {
-		$response["paymentSuccessful"] = false;
-		$response["userCreated"] = 0;
-		echo json_encode($response);
-		die();		
-	}
+$amount_to_save = (5 / 100) * $data["amount"];
 
-	$response["user"] = $user;	
-}
-
-$amount_to_save = (5 / 100) * $_POST["amount"];
-
-if (!$User->add_rating($_POST["waiterID"], $_POST["waiterRating"])) {
+if (!$User->add_rating($data["waiterID"], $data["waiterRating"])) {
 	$response["ratingUpdateError"] = true;
 	$response["paymentSuccessful"] = false;
 	echo json_encode($response);
 	die();		
 }
 
-if (!$User->add_funds($_POST["waiterID"], $_POST["amount"])) {
+if (!$User->add_funds($data["waiterID"], $data["amount"])) {
 	$response["addFundsError"] = true;
 	$response["paymentSuccessful"] = false;
 	echo json_encode($response);
 	die();		
 }
 
-if ($_POST["userId"]) {$user_id = $_POST["userId"];}
-if ($user["ID"]) {$user_id = $user["ID"];}
-if (!$user["ID"] && !$_POST["userId"]) {$user_id=0;}
 
-if (!$User->add_transaction($user_id, (int)$_POST["waiterID"], $_POST["amount"])) {
+(!empty($data["userId"])) ? ($user_id = $data["userId"]) : ($user_id = 0);
+
+if (!$User->add_transaction($user_id, (int)$data["waiterID"], $data["amount"], $data["WSPayID"])) {
 	$response["addTransactionError"] = true;
 	$response["paymentSuccessful"] = false;
 	echo json_encode($response);
 	die();
 }	
 
-$waiter = $User->basic_details($_POST["waiterID"]);
-payment_email($waiter["email"], $waiter["firstName"] . " " . $waiter["lastName"], $_POST["amount"]);
+$waiter = $User->basic_details($data["waiterID"]);
+//payment_email($waiter["email"], $waiter["firstName"] . " " . $waiter["lastName"], $data["amount"]);
 
 $response["paymentSuccessful"] = 1;
 echo json_encode($response);

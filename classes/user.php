@@ -298,14 +298,14 @@ class User
 		return $is_inserted;
 	}
 
-	public function add_transaction($user_id, $waiter_id, $amount) {
+	public function add_transaction($user_id, $waiter_id, $amount, $ws_ID) {
 
 		$con = $this->CON;
 
-		$query_string = "INSERT INTO transactions (ID, user_id, waiter_id, establishment_id, wspay_id, amount, timestamp) VALUES (DEFAULT, ?, ?, 0, 0, ?, " . time() . ")";
+		$query_string = "INSERT INTO transactions (ID, user_id, waiter_id, establishment_id, amount, wspay_id, timestamp) VALUES (DEFAULT, ?, ?, 0, ?, ?, " . time() . ")";
 
 		$insert_transaction = $con->prepare($query_string);
-		$insert_transaction->bind_param('sss', $user_id, $waiter_id, $amount);
+		$insert_transaction->bind_param('ssss', $user_id, $waiter_id, $amount, $ws_ID);
 
 		return $insert_transaction->execute();
 	}

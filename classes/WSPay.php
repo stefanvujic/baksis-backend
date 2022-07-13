@@ -109,4 +109,32 @@ class WSPay
 
 	}
 
+	public function check_transaction($WSPayId, $signature) {
+		$headers = array(
+			"Content-type: application/json",
+		);
+
+		$data = [		
+			'Version' => "2.0", 
+			'ShopID' => "BAKSISRS", 
+			'ShoppingCartID' => $WSPayId, 
+			'Amount' => $this->amount, 			
+			'Signature' => $signature 
+
+		];
+
+		$url = 'https://test.wspay.biz/api/services/statusCheck';
+
+		$ch = curl_init($url);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);		
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+
+		$response = curl_exec($ch);
+
+		curl_close($ch);
+
+		$response = json_decode($response);
+	}
+
 }
