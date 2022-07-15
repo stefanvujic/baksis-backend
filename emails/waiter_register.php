@@ -11,7 +11,10 @@ function waiter_register_email($recipient, $qr_url) {
 	$message .= "<p style='font-size: 21px;'>Isti se može naći na korisnićkom profilu.</p>";
 	$message .= "<img src='".$qr_url."' />";
 
-	$content = email_template($message);
+	$content = $message;
+
+	$message .= "<p>S poštovanjem,</p>";
+	$message .= "<p>Bakšiš</p>";
 
 	$headers = "From: no-reply@baksis.rs\r\n";
 	$headers .= "Reply-To: no-reply@baksis.rs\r\n";

@@ -36,17 +36,16 @@ if ($data["userId"]) {
 	}
 }
 
+//TODO: validate signiture and wspay id!!!!!
+
 $WSPay->set_amount($data["amount"]);
 
-
-//TODO: check if transaction exists!!!
-//TODO: validate signiture and wspay id!!!!!
-// $transaction_complete = $WSPay->check_transaction($data["WSPayID"], $data["signature"]);
-// if(!$transaction_complete) {
-// 	$response["transaction"] = false;
-// 	echo json_encode($response);
-// 	die();
-// }
+$transaction_complete = $WSPay->check_transaction($data["WSPayID"], $data["signature"]);
+if(!$transaction_complete) {
+	$response["transaction"] = false;
+	echo json_encode($response);
+	die();
+}
 
 $amount_to_save = (5 / 100) * $data["amount"];
 
@@ -67,17 +66,19 @@ if (!$User->add_funds($data["waiterID"], $data["amount"])) {
 
 (!empty($data["userId"])) ? ($user_id = $data["userId"]) : ($user_id = 0);
 
-if (!$User->add_transaction($user_id, (int)$data["waiterID"], $data["amount"], $data["WSPayID"])) {
+if (!$User->add_transaction($user_id, (int)$data["waiterID"], (int)$data["amount"], (int)$data["WSPayID"])) {
 	$response["addTransactionError"] = true;
 	$response["paymentSuccessful"] = false;
+	$response["amount"] = (int)$data["amount"];
+	$response["transactionStatus"] = $transaction_complete;
 	echo json_encode($response);
 	die();
 }	
 
 $waiter = $User->basic_details($data["waiterID"]);
-//payment_email($waiter["email"], $waiter["firstName"] . " " . $waiter["lastName"], $data["amount"]);
+payment_email($waiter["email"], $waiter["firstName"] . " " . $waiter["lastName"], $data["amount"]);
 
-$response["paymentSuccessful"] = 1;
+$response["transactionStatus"] = $transaction_complete;
 echo json_encode($response);
 
 die();

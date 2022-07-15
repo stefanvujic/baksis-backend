@@ -30,7 +30,7 @@ class WSPay
 
 		$con = $this->CON;
 
-		$id = time() . $this->amount . random_int(1, 5000);
+		$id = substr(time(), -4) . $this->amount;
 
 		while(!$this->wspay_id_exist($id)) {
 			$query_string = "SELECT ID FROM transactions WHERE wspay_id = " .  $id;
@@ -81,11 +81,7 @@ class WSPay
 			'ShopID' => "BAKSISRS", 
 			'ShoppingCartID' => $this->WSPayId, 
 			'Amount' => $this->amount, 
-			'Duration' => "30",
-			// "PaymentMethods" => [
-			// 	"PaymentTypeCodes" => ["POVISX", "ZABADEVI", "ZABAOVIS", "ZABAOMAS", "DINERS", "BIOVISX", "BIODNA"],
-			// 	"PaymentTypeGroups" => ["VISA", "DINERS", "MASTERCARD", "AMEX", "MAESTRO", "DINA"]
-			// ],						
+			'Duration' => "30",					
 			'Signature' => $this->WSPay_auth_id  
 
 		];
@@ -119,7 +115,7 @@ class WSPay
 			'ShopID' => "BAKSISRS", 
 			'ShoppingCartID' => $WSPayId, 
 			'Amount' => $this->amount, 			
-			'Signature' => $signature 
+			'Signature' => hash("sha512", self::SHOP_ID . self::SECRET_KEY . $WSPayId . self::SECRET_KEY . self::SHOP_ID . $WSPayId)
 
 		];
 
@@ -135,6 +131,8 @@ class WSPay
 		curl_close($ch);
 
 		$response = json_decode($response);
+
+		return (int)$response->Authorized;
 	}
 
 }

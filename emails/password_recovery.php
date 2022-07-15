@@ -9,8 +9,10 @@ function password_recovery_email($recipient, $token) {
 
 	$message .= "<p>Zatražili ste resetovanje lozinke za pristup Vašem baksis.rs nalogu. Da biste resetovali lozinku, kliknite na link Resetuj lozinku koje se nalazi ispod.</p>";
 	$message .= "<a href=https://" . $_SERVER['SERVER_NAME'] . "/povrati-lozinku?token=" . $token . ">Resetuj lozinku</a>";
+	$message .= "<p>S poštovanjem,</p>";
+	$message .= "<p>Bakšiš</p>";
 
-	$content = email_template($message);
+	$content = $message;
 
 	$headers = "From: no-reply@baksis.rs\r\n";
 	$headers .= "Reply-To: no-reply@baksis.rs\r\n";
