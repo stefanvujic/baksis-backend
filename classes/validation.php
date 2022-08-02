@@ -3,10 +3,13 @@
 require_once '../../vendor/autoload.php';
 use Respect\Validation\Validator as v;
 
+//validate cirilic
+
 class Validation
 {
 	public function username($username) {
-		(v::alnum()->validate($username) && v::stringType()->length(5, 14)->validate($username)) ? ($validated = true) : ($validated = false);
+		(v::stringType()->length(5, 14)->validate($username)) ? ($validated = true) : ($validated = false);
+		// (v::alnum()->validate($username) && v::stringType()->length(5, 14)->validate($username)) ? ($validated = true) : ($validated = false);
 		return $validated;
 	}	
 	public function password($password) {
@@ -18,7 +21,7 @@ class Validation
 		return $validated;
 	}
 	public function name($name) {
-		(v::alpha()->validate($name) && v::stringType()->length(3, 30)->validate($name)) ? ($validated = true) : ($validated = false);
+		(v::stringType()->length(3, 30)->validate($name)) ? ($validated = true) : ($validated = false);
 		return $validated;
 	}
 	public function company_name($company_name) {
@@ -30,11 +33,11 @@ class Validation
 		return $validated;
 	}	
 	public function city($city) {
-		(v::alpha()->validate($city) && v::stringType()->length(3, 30)->validate($city)) ? ($validated = true) : ($validated = false);
+		(v::stringType()->length(3, 30)->validate($city)) ? ($validated = true) : ($validated = false);
 		return $validated;
 	}	
 	public function country($country) {
-		(v::alpha()->validate($country) && v::stringType()->length(3, 30)->validate($country)) ? ($validated = true) : ($validated = false);
+		(v::stringType()->length(3, 30)->validate($country)) ? ($validated = true) : ($validated = false);
 		return $validated;
 	}		
 	public function phone($number) {
@@ -43,6 +46,10 @@ class Validation
 	}
 	public function postal_code($postal_code) {
 		(v::numericVal()->validate($postal_code) && v::stringType()->length(3, 10)->validate($postal_code)) ? ($validated = true) : ($validated = false);
+		return $validated;
+	}	
+	public function account_number($account_number) {
+		(v::intVal()->length(10, 35)->validate($account_number)) ? ($validated = true) : ($validated = false);
 		return $validated;
 	}	
 	public function avatar_img($img) {

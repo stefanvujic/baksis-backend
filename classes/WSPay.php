@@ -135,4 +135,37 @@ class WSPay
 		return (int)$response->Authorized;
 	}
 
+	public function complete_transaction($WSPayId, $approval_code, $stan) {
+		$headers = array(
+			"Content-type: application/json",
+		);
+
+		$data = [		
+			'Version' => "2.0", 
+			'WsPayOrderId' => $WSPayId, 
+			'ShopID' => "BAKSISRS", 
+			'ApprovalCode' => $approval_code, 
+			'STAN' => $stan,
+			'Amount' => $this->amount."00", 			
+			'Signature' => hash("sha512", self::SHOP_ID . $WSPayId . self::SECRET_KEY . $stan . self::SECRET_KEY . $approval_code . self::SECRET_KEY . $this->amount."00" . self::SECRET_KEY . $WSPayId)
+
+		];
+
+		$url = 'https://test.wspay.biz/api/services/completion';
+
+		$ch = curl_init($url);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);		
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+
+		$response = curl_exec($ch);
+
+		curl_close($ch);
+
+		$response = json_decode($response);
+
+		return $response->ActionSuccess;
+	}
+
 }
+

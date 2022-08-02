@@ -1,8 +1,5 @@
 <?php
 
-/**
- * 
- */
 class Payspot
 {
 
@@ -15,30 +12,20 @@ class Payspot
 	const LIVE_PAYMENT_ORDER_INSERT_ENDPOINT = "https://www.nsgway.rs:50010/api/paymentorderinsert";
 
 	const TEST_PAYMENT_INFO_ENDPOINT = "https://test.nsgway.rs:50009/api/payment";
-	const LIVE_PAYMENT_INFO_ENDPOINT = "https://www.nsgway.rs:50010/api/payment";	
+	const LIVE_PAYMENT_INFO_ENDPOINT = "https://www.nsgway.rs:50010/api/payment";
 
-	// function __construct($CON) {
-	// 	$this->CON = $CON;
-	// }
+	const TEST_CHECK_ORDER_ENDPOINT = "https://test.nsgway.rs:50009/api/paymentorderstatus";
+	const LIVE_CHECK_ORDER_ENDPOINT = "https://www.nsgway.rs:50010/api/paymentorderstatus";	
+
+	function __construct($CON) {
+		$this->CON = $CON;
+	}
 
 	private function get_transactions() {
 		require 'WSPay.php';
+		$con = $this->CON;
 
-		$query_string = "SELECT users.ID, 
-								users.first_name, 
-								users.last_name,
-								users.email,
-								users.address,
-								users.city,
-								transactions.ID, 
-								transactions.wspay_id, 
-								transactions.waiter_id, 
-								transactions.user_id, 
-								transactions.amount, 
-								transactions.timestamp
-		FROM transactions
-		JOIN users ON users.ID = transactions.waiter_id
-		WHERE transactions.timestamp >= UNIX_TIMESTAMP(CURDATE()) ORDER BY transactions.waiter_id";
+		$query_string = "SELECT ID, user_id, waiter_id, amount, payspot_id, timestamp FROM transactions WHERE timestamp >= UNIX_TIMESTAMP(CURDATE()) ORDER BY user_id";		
 
 		$get_transactions = mysqli_query($this->CON, $query_string);
 
@@ -46,46 +33,143 @@ class Payspot
 		    $transactions[] = $row;
 		}
 
-		$WSPay = new WSPay($this->CON);
 		foreach ($transactions as $key => $transaction) {
-			if (!$WSPay->check_transaction($transaction["wspay_id"], 1)) {
-				unset($transactions[$key]);
+
+			$transactions[$key]["sequenceNo"] = 1;
+
+			$transactions[$key]["merchantOrderReference"] = $transaction["ID"];
+
+			if ($transaction["user_id"] == 0) {
+				$transactions[$key]["debtorName"] = "gost";
+				$transactions[$key]["debtorAddress"] = "gost";
+				$transactions[$key]["debtorCity"] = "gost";
+			}else {
+				$query_string = "SELECT first_name, last_name, address, city FROM users WHERE ID = " . $transaction["user_id"];
+				$result = $con->query($query_string);
+				$user_info = $result->fetch_assoc();
+
+				$transactions[$key]["debtorName"] = $user_info["first_name"] . " " . $user_info["first_name"];
+				$transactions[$key]["debtorAddress"] = $user_info["address"];
+				$transactions[$key]["debtorCity"] = $user_info["city"];					
 			}
+
+			$query_string = "SELECT first_name, last_name, address, city, account_number FROM users WHERE ID = " . $transaction["waiter_id"];
+			$result = $con->query($query_string);
+			$waiter_info = $result->fetch_assoc();
+
+			$transactions[$key]["beneficiaryAccount"] = $waiter_info["account_number"]; //IMPLE1117MENT THIS			
+
+			$transactions[$key]["beneficiaryName"] = $waiter_info["first_name"] . " " . $waiter_info["first_name"];
+			$transactions[$key]["beneficiaryAddress"] = $waiter_info["address"];
+			$transactions[$key]["beneficiaryCity"] = $waiter_info["city"];
+
+			$transactions[$key]["amountTrans"] = $transaction["amount"];
+
+			$baksis_fee = (3 / 100) * $transaction["amount"];
+			$payspot_fee = 20;
+			$senders_fee = $payspot_fee + $baksis_fee;
+			$beneficiary_amount = $transaction["amount"] - $senders_fee;
+
+			$transactions[$key]["senderFeeAmount"] = $senders_fee;
+			$transactions[$key]["paySpotFeeAmount"] = $payspot_fee;
+			$transactions[$key]["beneficiaryAmount"] = $beneficiary_amount;
+
+			$transactions[$key]["beneficiaryCurrency"] = "941";
+			$transactions[$key]["purposeCode"] = "189";
+			$transactions[$key]["paymentPurpose"] = "Baksis";
+			$transactions[$key]["isUrgent"] = "0";
+			$transactions[$key]["valueDate"] = date("Y-m-d"); 
+
+			unset($transactions[$key]["user_id"]);
+			unset($transactions[$key]["waiter_id"]);
+			unset($transactions[$key]["amount"]);
+			unset($transactions[$key]["timestamp"]);
 		}
 
 		return $transactions;
 	}
 
-	private function get_payouts() {
+	private function create_orders() {
 		$transactions = $this->get_transactions();
 
-		foreach ($transactions as $key => $item) {
-		   $transactions_by_user[$item['waiter_id']][] = $item;
-		}
-
-		ksort($transactions_by_user, SORT_NUMERIC);
-
-		$payouts = array();
+		$orders = array();
 		$ctr = 0;
-		foreach ($transactions_by_user as $transaction) {
-			$payout_amount = array_sum(array_column($transaction,'amount'));
+		if($transactions) {
+			foreach ($transactions as $key => $transaction) {
 
-			$payouts[$ctr]["waiter_id"] = $transaction[0]["waiter_id"];
-			$payouts[$ctr]["first_name"] = $transaction[0]["first_name"];
-			$payouts[$ctr]["last_name"] = $transaction[0]["last_name"];
-			$payouts[$ctr]["email"] = $transaction[0]["email"];
-			$payouts[$ctr]["address"] = $transaction[0]["address"];
-			$payouts[$ctr]["city"] = $transaction[0]["city"];
+				$orders[$ctr]["PaymentOrderGroup"]["merchantContractID"] = 626;		
 
-			$payouts[$ctr]["amount"] = $payout_amount;
+				$orders[$ctr]["PaymentOrderGroup"]["merchantOrderID"] = $transaction["ID"];
+				$orders[$ctr]["PaymentOrderGroup"]["paySpotOrderID"] = $transaction["payspot_id"]; //import from transactions
+				unset($transaction["payspot_id"]);
+				$orders[$ctr]["PaymentOrderGroup"]["merchantOrderAmount"] = $transaction["amountTrans"];
+				$orders[$ctr]["PaymentOrderGroup"]["merchantCurrencyCode"] = 941;
+				$orders[$ctr]["PaymentOrderGroup"]["paymentType"] = 1;
+				$orders[$ctr]["PaymentOrderGroup"]["requestType"] = "1";
+				$orders[$ctr]["PaymentOrderGroup"]["actionType"] = "I";
+				$orders[$ctr]["PaymentOrderGroup"]["merchantGroupID"] = $transaction["ID"];
+				unset($transaction["ID"]);				
+				$orders[$ctr]["PaymentOrderGroup"]["sumOfOrders"] = $transaction["amountTrans"];
+				$orders[$ctr]["PaymentOrderGroup"]["numberOfOrders"] = 1;
+				$orders[$ctr]["PaymentOrderGroup"]["language"] = "1";
+				$orders[$ctr]["PaymentOrderGroup"]["shopID"] = "BAKSISRS";
+				$orders[$ctr]["PaymentOrderGroup"]["terminalID"] = "IN001807";
+				$orders[$ctr]["PaymentOrderGroup"]["Orders"] = array($transaction);
+				$orders[$ctr]["PaymentOrderGroup"]["Customer"] = array("CustomerName" => "gost");
 
-			$payout_amount = 0;
-			$ctr++;
-
+				$ctr++;
+			}
 		}
 
-		return $payouts;
+		return $orders;
 	}
+
+	public function send_payment_info($amount, $transaction_id) {
+		$rnd = $this->generate_rnd();
+
+		$headers = array(
+			"Content-type: application/json",
+		);
+
+		$data = [
+			"Data" => [
+				"Header" => [
+					"Content-type" 		=> "application/json",
+					"CompanyID" 		=> self::COMPANY_ID,
+					"ExternalRequestID" => (string)$this->create_external_request_id(),
+					"RequestDateTime" 	=> date("Y-m-d h:m:s"),
+					"MsgType" 			=> "51",
+					"Rnd" 				=> $rnd,
+					"Hash" 				=> $this->generate_hash(51, $rnd)
+				],
+				"Body" => [
+					"merchantContractID"  	=>	626, 
+					"merchantOrderID"     	=>	$transaction_id,
+					"merchantOrderAmount"   =>	$amount,
+					"merchantCurrencyCode"  =>	941,
+					"paymentDate" 			=> 	date("Y-m-d"),
+					"transtype"				=>	"PreAuth",
+					"paymentType"			=>	1,
+					"language"				=>	1,
+				]
+			]
+		];	
+
+		$url = self::TEST_PAYMENT_INFO_ENDPOINT;
+
+		$ch = curl_init($url);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);		
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+
+		$response = curl_exec($ch);
+
+		$response = json_decode($response);
+
+		curl_close($ch);
+
+		return $response;
+	}	
 
 	private function generate_rnd($length = 20) {
 	    $characters = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -105,214 +189,185 @@ class Payspot
 	}
 
 	private function create_external_request_id() {
-		return 4; // has to be incremental and never lower than previous ones
+		return 11; // has to be incremental and never lower than previous ones
 	}
 
-	public function send_payment_info() {
-		$rnd = $this->generate_rnd();
+	public function insert_payment_orders() {
 
-		$headers = array(
-			"Content-type: application/json",
-			"CompanyID: ".self::COMPANY_ID."",
-			"ExternalRequestID: ".(string)$this->create_external_request_id()."",
-			"RequestDateTime: ".date("Y-m-d h:m:s")."",
-			"MsgType: 51",
-			"Rnd: ".$rnd."",
-			"Hash: ".$this->generate_hash(51, $rnd).""
-		);
+		$log_output = array();
+		$orders = $this->create_orders();
+		$url = self::TEST_PAYMENT_ORDER_INSERT_ENDPOINT;
+		$con = $this->CON;
 
-		$data = [		
-			"merchantContractID"  	=>	626, 
-			"merchantOrderID"     	=>	"testOrder",
-			"merchantOrderAmount"   =>	1000,
-			"merchantCurrencyCode"  =>	941,
-			"paymentDate" 			=> 	date("Y-m-d"),
-			"transtype"				=>	"PreAuth",
-			"paymentType"			=>	1,
-			"language"				=>	1,
-		];
+		if (!empty($orders)) {
+			foreach ($orders as $key => $order) {
 
-		echo "<pre>" .json_encode($headers, JSON_PRETTY_PRINT). "<pre/>";
-		echo "<pre>" .json_encode($data, JSON_PRETTY_PRINT). "<pre/>";
+				$rnd = $this->generate_rnd();
+				$data = [
+					"Data" => [
+						"Header" => [
+							"Content-type" 		=> "application/json",
+							"CompanyID" 		=> self::COMPANY_ID,
+							"ExternalRequestID" => (string)$this->create_external_request_id(), // not even needed
+							"RequestDateTime" 	=> date("Y-m-d h:m:s"),
+							"MsgType" 			=> "101",
+							"Rnd" 				=> $rnd,
+							"Hash" 				=> $this->generate_hash(101, $rnd)
+						],
+						"Body" => $order
+					]
+				];
 
-		$url = self::TEST_PAYMENT_INFO_ENDPOINT;
+				$ch = curl_init($url);
 
-		$ch = curl_init($url);
-		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);		
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+				$headers = array(
+					"Content-type: application/json",
+				);
+				
+				curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);		
+				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+				curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data, JSON_UNESCAPED_UNICODE));
 
-		$response = curl_exec($ch);
 
-		$response = json_decode($response);
+				$response = curl_exec($ch);
 
-		print_r($response);
+				curl_close($ch);
 
-		curl_close($ch);
+				$response = json_decode($response);
 
-		return $response;
+				$log_output[] = $response;
+
+				echo "<pre>" .json_encode($response, JSON_PRETTY_PRINT). "<pre/>";	
+
+				$merchant_order_id = $response->Data->Body->PaymentOrderGroup->merchantOrderID;
+				$payspot_order_id = $response->Data->Body->PaymentOrderGroup->paySpotOrderID;
+				$merchant_group_id = $response->Data->Body->PaymentOrderGroup->merchantGroupID;
+				$payspot_group_id = $response->Data->Body->PaymentOrderGroup->payspotGroupID;
+				$payspot_transaction_id = $response->Data->Body->PaymentOrderGroup->Orders[0]->payspotTransactionID;
+				$merchant_order_reference = $response->Data->Body->PaymentOrderGroup->Orders[0]->merchantOrderReference;
+
+				if ($merchant_order_id && $payspot_order_id && $payspot_group_id && $payspot_transaction_id && $merchant_order_reference && $merchant_group_id) {
+
+					$query_string = "INSERT INTO payouts (ID, amount, merchant_order_id, merchant_group_id, payspot_group_id, payspot_transaction_id, merchant_order_reference, timestamp) VALUES (DEFAULT, ".$order["PaymentOrderGroup"]["merchantOrderAmount"].", ".$merchant_order_id.", ".$merchant_group_id.", ".$payspot_group_id.", ".$payspot_transaction_id.", ".$merchant_order_reference.", ".time().")";
+					mysqli_query($con, $query_string);
+				}
+
+			}
+
+			error_log(json_encode($log_output, JSON_PRETTY_PRINT), 1, "stefan@baksis.rs");
+		}
 	}
 
-	// public function insert_payment_order() {
+	public function check_orders() {
+		$con = $this->CON;
+		$url = self::TEST_CHECK_ORDER_ENDPOINT;
 
-	// 	$rnd = $this->generate_rnd();
+		$query_string = "SELECT merchant_order_id AS merchantOrderID, merchant_group_id AS merchantGroupID, payspot_group_id AS paymentGroupID, merchant_order_reference AS merchantReference, payspot_transaction_id AS payspotTransactionID FROM payouts";
 
-	// 	$headers = array(
-	// 		"Content-type: application/json",
-	// 		"CompanyID: ".self::COMPANY_ID."",
-	// 		"ExternalRequestID: ".(string)$this->create_external_request_id()."",
-	// 		"RequestDateTime: ".date("Y-M-D h:m:s")."",
-	// 		"MsgType: ".101."",
-	// 		"Hash: ".$this->generate_hash(1, $rnd)."",
-	// 		"Rnd: ".$rnd."",
-	// 		"Language: 1"
-	// 	);
+		$payout_rows = mysqli_query($this->CON, $query_string);
 
-	// 	$data = array(	
-	// 		'PaymentOrderGroup' 		=>  array(
-	// 			"merchantContractID"  	=>	626,
-	// 			"merchantOrderID"     	=>	"1",
-	// 			"paySpotOrderID"      	=>	null, //how do we get this???
-	// 			"merchantOrderAmount" 	=>	200,
-	// 			"merchantCurrencyCode"  =>	626,
-	// 			"paymentType"    		=>	3,
-	// 			"requestType"      		=> 	"I",
-	// 			"merchantGroupID" 		=> 	"1", //create this
-	// 			"sumOfOrders"			=> 	200,
-	// 			"numberOfOrders"		=> 	1,
-	// 			"merchantLocation"		=> 	null,
-	// 			"merchantLocationName"  => 	null,
-	// 			"language"				=> 	"1",
-	// 			"paymentGatewayID" 		=> 	null,
-	// 			"shopID"				=> 	"BAKSISRS",  //is this correct???
-	// 			"terminalID"			=> 	"IN001807", //how do we get this???
-	// 			"authorizationCode"		=>	null,
-	// 			"PAN"					=>  null,
-	// 			"STAN"					=>  null,
-	// 			"IPSReference"  		=>  null,
-	// 			"paymentAmount"			=>  0,
-	// 			"Orders" 				=>	array(
-	// 											"sequenceNo" 			 	=>	1,
-	// 											"merchantOrderReference"	=>	"222333", //create this
-	// 											"transactionID"				=>	null,
-	// 											"debtorAccount"				=>	null,
-	// 											"debtorName" 				=>  "Dragan Milanović",
-	// 											"debtorAddress" 			=>  "Pavla Jurišića Šturma 717",
-	// 											"debtorCity"				=> 	"Palilula",
-	// 											"debtorModul"				=> 	null,
-	// 											"debtorReference"			=> 	null,
-	// 											"beneficiaryAccount"		=> 	"160000000021612549",
-	// 											"beneficiaryCode"			=> 	null,
-	// 											"beneficiaryName"			=> 	"Vladimir Nikolic",
-	// 											"beneficiaryAddress"		=> 	"Vladimira Popovica 6",
-	// 											"beneficiaryCity"			=> 	"Beograd-Novi Beograd",
-	// 											"beneficiaryModul"			=> 	null,
-	// 											"beneficiaryReference"		=> 	"36",
-	// 											"amountTrans"				=> 	200,
-	// 											"senderFeeAmount"			=> 	26.2,
-	// 											"paySpotFeeAmount"			=> 	0,
-	// 											"beneficiaryAmount"			=> 	73.8,
-	// 											"beneficiaryCurrency"		=> 	"941",
-	// 											"purposeCode"				=> 	"189",
-	// 											"paymentPurpose"			=> 	"Placanje robe",
-	// 											"isUrgent"					=> 	"0",
-	// 											"valueDate"					=> 	"2022-12-20",
-	// 											"beneficiaryEMail"			=> 	"spajalica@gmail.com",
-	// 											"beneficiaryContactNumber"	=> 	"38163000000",		
-	// 											"beneficiaryContactPerson"	=>	null						
-	// 			),
-	// 		), 
-	// 		'Customer' 					=> array(
-	// 											"CustomerJMBG"			=> 	"31031987473281",
-	// 											"CustomerName" 			=> 	"Petar",
-	// 											"CustomerLastName" 		=> 	"Petrovic",
-	// 											"DocumentType" 			=> 	"Licna karta",
-	// 											"DocumentNumber" 		=> 	"34221243",
-	// 											"DocIssueCity" 			=> 	"",
-	// 											"DocIsueCountryName" 	=> 	"Srbija",
-	// 											"DocIssueDate" 			=> 	"2020-03-25",
-	// 											"DocValidTo"			=>	"2022-07-25",
-	// 											"CustomerPhone"			=>	"063921023",
-	// 											"CustomerMail"			=>	"pera87@gmail.com"
-	// 		)
-	// 	);
+		while ($row = $payout_rows->fetch_assoc()) {
+		    $payouts[] = $row;
+		}
 
-	// 	// echo json_encode($data);
+		foreach($payouts as $key => $payout) {
 
-	// 	$url = self::TEST_PAYMENT_ORDER_INSERT_ENDPOINT;
+			$payout = array('merchantContractID' => 626) + $payout;
 
-	// 	// echo "<pre>" .json_encode($data, JSON_PRETTY_PRINT). "<pre/>";
-	// 	// echo $url;
+			$rnd = $this->generate_rnd();
 
-	// 	$ch = curl_init($url);
-	// 	curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);		
-	// 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-	// 	curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-	// 	curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 0); 
-	// 	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+			$data = [
+				"Data" => [
+					"Header" => [
+						"Content-type" 		=> "application/json",
+						"CompanyID" 		=> self::COMPANY_ID,
+						"ExternalRequestID" => (string)$this->create_external_request_id(), // not even needed
+						"RequestDateTime" 	=> date("Y-m-d h:m:s"),
+						"MsgType" 			=> "104",
+						"Rnd" 				=> $rnd,
+						"Hash" 				=> $this->generate_hash(104, $rnd)
+					],
+					"Body" => $payout
+				]
+			];
+			echo "<pre>" .json_encode($data, JSON_PRETTY_PRINT). "<pre/>";	
+
+			$ch = curl_init($url);
+
+			$headers = array(
+				"Content-type: application/json",
+			);
+			
+			curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);		
+			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+			curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data, JSON_UNESCAPED_UNICODE));
+
+			$response = curl_exec($ch);
+
+			curl_close($ch);
+
+			$response = json_decode($response);	
+
+			$merchant_order_id = $response->Data->Body->statusTrans;
+
+			echo "<pre>" .json_encode($response, JSON_PRETTY_PRINT). "<pre/>";			
+		}
+	}	
 
 
-	// 	$response = curl_exec($ch);
+	public function confirm_orders() {
+		$con = $this->CON;
+		$url = self::TEST_CHECK_ORDER_ENDPOINT;
 
-	// 	curl_close($ch);
+		$query_string = "SELECT merchant_order_id AS merchantOrderID, merchant_group_id AS merchantGroupID, payspot_group_id AS paymentGroupID, merchant_order_reference AS merchantReference, payspot_transaction_id AS payspotTransactionID FROM payouts";
 
-	// 	$response = json_decode($response);
+		$payout_rows = mysqli_query($this->CON, $query_string);
 
-	// 	print_r($response);
-	// 	// return (int)$response->Authorized;
-	// }
+		while ($row = $payout_rows->fetch_assoc()) {
+		    $payouts[] = $row;
+		}
+
+		foreach($payouts as $key => $payout) {
+
+			// $payout = array('merchantContractID' => 626) + $payout;
+
+			// $rnd = $this->generate_rnd();
+
+			// $data = [
+			// 	"Data" => [
+			// 		"Header" => [
+			// 			"Content-type" 		=> "application/json",
+			// 			"CompanyID" 		=> self::COMPANY_ID,
+			// 			"ExternalRequestID" => (string)$this->create_external_request_id(), // not even needed
+			// 			"RequestDateTime" 	=> date("Y-m-d h:m:s"),
+			// 			"MsgType" 			=> "104",
+			// 			"Rnd" 				=> $rnd,
+			// 			"Hash" 				=> $this->generate_hash(104, $rnd)
+			// 		],
+			// 		"Body" => $payout
+			// 	]
+			// ];
+			// echo "<pre>" .json_encode($data, JSON_PRETTY_PRINT). "<pre/>";	
+
+			// $ch = curl_init($url);
+
+			// $headers = array(
+			// 	"Content-type: application/json",
+			// );
+			
+			// curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);		
+			// curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+			// curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data, JSON_UNESCAPED_UNICODE));
+
+			// $response = curl_exec($ch);
+
+			// curl_close($ch);
+
+			// $response = json_decode($response);	
+
+			// $merchant_order_id = $response->Data->Body->statusTrans;
+
+			// echo "<pre>" .json_encode($response, JSON_PRETTY_PRINT). "<pre/>";			
+		}
+	}		
 }
-
-$Payspot = new Payspot();
-$Payspot->send_payment_info();
-
-// REQUEST:
-// {
-// 	"Data": {
-// 	"Header": {
-// 	"CompanyID": xxxxxxxxxxx,
-// 	"ExternalRequestID": ”nnnnnnnn”,
-// 	"RequestDateTime":"date and time of request",
-// 	"MsgType": Message Type ID,
-// 	"Hash": “Authentication Hash string”,
-// 	"Rnd": “Random string”,
-// 	"Language": 1,
-// },
-// "Body": {
-// 	Struktura određena tipom poruke
-// 		}
-// 	}
-// }
-
-
-
-// $headers = [
-// 	"Content-type: application/json",
-// 	"CompanyID: ".self::COMPANY_ID."",
-// 	"ExternalRequestID: ".(string)$this->create_external_request_id()."",
-// 	"RequestDateTime: ".date("Y-m-d h:m:s")."",
-// 	"MsgType: 51",
-// 	"Rnd: ".$rnd."",
-// 	"Hash: ".$this->generate_hash(51, $rnd).""
-// ];
-
-// $data = [		
-// 	"merchantContractID"  	=>	626, 
-// 	"merchantOrderID"     	=>	"testOrder",
-// 	"merchantOrderAmount"   =>	1000,
-// 	"merchantCurrencyCode"  =>	941,
-// 	"email" 				=> 	"stefanvujic576@gmail.com",					
-// 	"phoneNumber" 			=> 	"0603188987",
-// 	"paymentDate" 			=> 	date("Y-m-d"),
-// 	"recurring"				=>  array(
-// 									"recurringAmount" => null,
-// 									"recurringCurrencyCode" => null,
-// 									"recurringPaymentNumber" => null,
-// 									"recurringFrequencyUnit" => null,
-// 									"recurringFrequency" => null,
-// 								),
-// 	"transtype"				=>	"PreAuth",
-// 	"paymentType"			=>	1,
-// 	"language"				=>	1,
-// 	"instalment"			=>	null
-// ];

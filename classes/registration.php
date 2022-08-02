@@ -44,12 +44,14 @@ class Registration
 
 		if (!$this->email_exists() && !$this->username_exists()) {
 
+			($this->user->userType == "waiter") ? ($acc_numb = $this->user->accNumb) : ($acc_numb = "0");
+
 			$con = $this->CON;
-			$query_string = "INSERT INTO users (ID, username, email, first_name, last_name, password, address, city, country, postal_code, type, thumbnail_path) VALUES (DEFAULT, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+			$query_string = "INSERT INTO users (ID, username, email, first_name, last_name, password, address, city, country, postal_code, type, thumbnail_path, account_number) VALUES (DEFAULT, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 			$insert_user = $con->prepare($query_string);
 			$password = User::hash_password($this->user->password);
 			$thumbnail = $this->upload_thumbnail();
-			$insert_user->bind_param('sssssssssss', $this->user->username, $this->user->email, $this->user->name, $this->user->surname, $password, $this->user->address, $this->user->city, $this->user->country, $this->user->zipCode, $this->user->userType, $thumbnail["name"]);
+			$insert_user->bind_param('ssssssssssss', $this->user->username, $this->user->email, $this->user->name, $this->user->surname, $password, $this->user->address, $this->user->city, $this->user->country, $this->user->zipCode, $this->user->userType, $thumbnail["name"], $acc_numb);
 			$insert_user->execute();
 
 			$user = $this->get_user($this->user->username, $password);

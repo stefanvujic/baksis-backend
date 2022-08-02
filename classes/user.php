@@ -302,12 +302,16 @@ class User
 
 		$con = $this->CON;
 
-		$query_string = "INSERT INTO transactions (ID, user_id, waiter_id, establishment_id, amount, wspay_id, timestamp) VALUES (DEFAULT, ?, ?, 0, ?, ?, " . time() . ")";
+		$query_string = "INSERT INTO transactions (ID, user_id, waiter_id, establishment_id, amount, wspay_id, payspot_id, timestamp) VALUES (DEFAULT, ?, ?, 0, ?, ?, ''," . time() . ")";
 
 		$insert_transaction = $con->prepare($query_string);
 		$insert_transaction->bind_param('ssss', $user_id, $waiter_id, $amount, $ws_ID);
 
-		return $insert_transaction->execute();
+		if ($insert_transaction->execute()) {
+			$trans_id = $con->insert_id;
+		}
+
+		return $trans_id;
 	}
 
 	public function get_transactions($user_id, $user_type) {
