@@ -48,7 +48,6 @@ if(!$transaction_authorized) {
 	die();
 }
 
-//complete transaction here
 $transaction_completed = $WSPay->complete_transaction($data["wspayOrderId"], $data["approvalCode"], $data["stan"]);
 if(!$transaction_completed) {
 	$response["transaction"] = false;
@@ -75,7 +74,7 @@ if (!$User->add_funds($data["waiterID"], $data["amount"])) { //put underneath pa
 
 (!empty($data["userId"])) ? ($user_id = $data["userId"]) : ($user_id = 0);
 
-$trans_id = $User->add_transaction($user_id, (int)$data["waiterID"], (int)$data["amount"], (int)$data["WSPayID"]);
+$trans_id = $User->add_transaction((int)$user_id, (int)$data["waiterID"], (int)$data["amount"], (int)$data["WSPayID"]);
 if (!$trans_id) {
 	$response["addTransactionError"] = true;
 	$response["paymentSuccessful"] = false;
@@ -93,6 +92,15 @@ if(!$payspot_order_id) {
 	echo json_encode($response);
 	die();
 }
+
+$insert_error = $Payspot->insert_payment_order((int)$data["amount"], (string)$trans_id, (int)$data["userId"], (int)$data["waiterID"], (string)$payspot_order_id); //get transaction amount from wspay response, not secure like this
+$insert_error = $order_info->Data->Status->ErrorCode;
+if($insert_error) {
+	$response["payspot"] = false;
+	echo json_encode($response);
+	die();
+}
+
 $query_string = "UPDATE transactions SET payspot_id = '" . $payspot_order_id . "' WHERE ID = " . $trans_id;
 mysqli_query($con, $query_string);
 

@@ -29,7 +29,7 @@ class Validation
 		return $validated;
 	}			
 	public function address($address) {
-		(v::stringType()->length(5, 50)->validate($address)) ? ($validated = true) : ($validated = false);
+		(v::stringType()->length(5, 100)->validate($address)) ? ($validated = true) : ($validated = false);
 		return $validated;
 	}	
 	public function city($city) {
@@ -49,7 +49,7 @@ class Validation
 		return $validated;
 	}	
 	public function account_number($account_number) {
-		(v::intVal()->length(10, 35)->validate($account_number)) ? ($validated = true) : ($validated = false);
+		(v::intVal()->length(10, 50)->validate($account_number)) ? ($validated = true) : ($validated = false);
 		return $validated;
 	}	
 	public function avatar_img($img) {

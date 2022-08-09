@@ -5,7 +5,7 @@ function payment_email($recipient, $waiter_name, $amount) {
 	require 'email_template.php';
 
 	$to      = $recipient;
-	$subject = 'Bakšiš je uplaćen!';
+	$subject = 'Baksis je uplacen!';
 
 	$message = "<p style='font-size: 21px;'>" . $amount . "rsd uplaćeno korisniku - " .$waiter_name . "</p>";
 	$message .= "<p>S poštovanjem,</p>";

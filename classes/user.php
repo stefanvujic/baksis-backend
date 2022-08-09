@@ -90,13 +90,13 @@ class User
 		$con = $this->CON;
 
 		if ($thumbnail) {
-			$query_string = "UPDATE users SET first_name = ?, last_name = ?, address = ?, city = ?, country = ?, postal_code = ?, thumbnail_path = ? WHERE ID = ?";
+			$query_string = "UPDATE users SET first_name = ?, last_name = ?, address = ?, city = ?, country = ?, postal_code = ?, thumbnail_path = ?, account_number = ? WHERE ID = ?";
 			$update_user_details = $con->prepare($query_string);
-			$update_user_details->bind_param('sssssisi', $details->firstName, $details->lastName, $details->address, $details->city, $details->country, $details->zipCode, $thumbnail, $details->ID);
+			$update_user_details->bind_param('sssssissi', $details->firstName, $details->lastName, $details->address, $details->city, $details->country, $details->zipCode, $thumbnail, $details->account, $details->ID);
 		}else {
-			$query_string = "UPDATE users SET first_name = ?, last_name = ?, address = ?, city = ?, country = ?, postal_code = ? WHERE ID = ?";
+			$query_string = "UPDATE users SET first_name = ?, last_name = ?, address = ?, city = ?, country = ?, postal_code = ?, account_number = ? WHERE ID = ?";
 			$update_user_details = $con->prepare($query_string);
-			$update_user_details->bind_param('ssssssi', $details->firstName, $details->lastName, $details->address, $details->city, $details->country, $details->zipCode, $details->ID);
+			$update_user_details->bind_param('sssssssi', $details->firstName, $details->lastName, $details->address, $details->city, $details->country, $details->zipCode, $details->account, $details->ID);
 		}
 
 		return $update_user_details->execute();	
@@ -106,7 +106,7 @@ class User
 
 		$con = $this->CON;
 
-		$query_string = "SELECT ID, type, username as userName, email, first_name as firstName, last_name as lastName, address, country, city, postal_code as postalCode, thumbnail_path as thumbnailPath FROM users WHERE ID = " . $user_id;
+		$query_string = "SELECT ID, type, username as userName, email, first_name as firstName, last_name as lastName, address, country, city, postal_code as postalCode, thumbnail_path as thumbnailPath, account_number as accountNumber FROM users WHERE ID = " . $user_id;
 		$get_user = $con->prepare($query_string);
 		$get_user->bind_param('i', $user_id);
 		$get_user->execute();
@@ -214,7 +214,7 @@ class User
 
 		$ctr = 0;
 		foreach ($months_passed as $month) {
-			$query_string = "SELECT SUM(amount) as total FROM transactions WHERE MONTH(FROM_UNIXTIME(timestamp)) = " . $month . " AND YEAR(FROM_UNIXTIME(timestamp)) = " . date("Y") . " AND user_id = " . $user_id;
+			$query_string = "SELECT SUM(amount) as total FROM transactions WHERE MONTH(FROM_UNIXTIME(timestamp)) = " . $month . " AND YEAR(FROM_UNIXTIME(timestamp)) = " . date("Y") . " AND " . $id_type . " = " . $user_id;
 			$month_amount = mysqli_fetch_assoc(mysqli_query($con, $query_string));
 
 			switch ($month) {
@@ -290,7 +290,13 @@ class User
 		$con = $this->CON;
 
 		$wallet_amount = $this->wallet($user_id);
-		$wallet = $wallet_amount + $amount_to_add;
+
+		$baksis_fee = (3 / 100) * $amount_to_add;
+		$payspot_fee = 20;
+		$senders_fee = $payspot_fee + $baksis_fee;
+		$beneficiary_amount = $amount_to_add - $senders_fee;	
+
+		$wallet = $wallet_amount + $beneficiary_amount;
 
 		$query_string = "UPDATE wallets SET amount = " . $wallet . " WHERE user_id = " . $user_id . "";
 		$is_inserted = $con->query($query_string);	

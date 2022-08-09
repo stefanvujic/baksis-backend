@@ -5,7 +5,7 @@ function password_recovery_email($recipient, $token) {
 	require 'email_template.php';
 
 	$to      = $recipient;
-	$subject = 'Bakšiš; Povrati šifru';
+	$subject = 'Baksis; Povrati sifru';
 
 	$message .= "<p>Zatražili ste resetovanje lozinke za pristup Vašem baksis.rs nalogu. Da biste resetovali lozinku, kliknite na link Resetuj lozinku koje se nalazi ispod.</p>";
 	$message .= "<a href=https://" . $_SERVER['SERVER_NAME'] . "/povrati-lozinku?token=" . $token . ">Resetuj lozinku</a>";

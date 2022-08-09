@@ -30,6 +30,7 @@ if (!$Validate->name($user_details->firstName) ||
 	!$Validate->city($user_details->city) ||
 	!$Validate->country($user_details->country) ||
 	!$Validate->postal_code($user_details->zipCode) ||
+	!$Validate->account_number((int)$user_details->account) ||
 	!$Validate->ID($user_details->ID)) {
 
 	$response["test"] = $user_details->zipCode;
