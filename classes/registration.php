@@ -74,7 +74,7 @@ class Registration
 
 	private function get_user($username, $password) {
 
-		$query_string = "SELECT ID, username as userName, email, first_name as firstName, last_name as lastName, address, city, country, postal_code as postalCode, type, thumbnail_path as thumbnailPath FROM users WHERE password = ? AND username = ?";
+		$query_string = "SELECT ID, username as userName, email, first_name as firstName, last_name as lastName, address, city, country, postal_code as postalCode, type, thumbnail_path as thumbnailPath, account_number as accountNumber FROM users WHERE password = ? AND username = ?";
 
 		$con = $this->CON;
 		$get_user = $con->prepare($query_string);

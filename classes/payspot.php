@@ -139,7 +139,7 @@ class Payspot
 		$beneficiary_amount = $amount - $senders_fee;
 
 		$transaction["senderFeeAmount"] = $senders_fee;
-		$transaction["paySpotFeeAmount"] = $payspot_fee;
+		$transaction["paySpotFeeAmount"] = 0;
 		$transaction["beneficiaryAmount"] = $beneficiary_amount;
 
 		$transaction["beneficiaryCurrency"] = "941";
@@ -216,13 +216,22 @@ class Payspot
 		$payspot_transaction_id = $response->Data->Body->PaymentOrderGroup->Orders[0]->payspotTransactionID;
 		$merchant_order_reference = $response->Data->Body->PaymentOrderGroup->Orders[0]->merchantOrderReference;
 
-		if ($merchant_order_id && $payspot_order_id && $payspot_group_id && $payspot_transaction_id && $merchant_order_reference && $merchant_group_id) {
+		$status = $response->Data->Body->PaymentOrderGroup->Orders[0]->statusProcessing;
 
-			$query_string = "INSERT INTO payouts (ID, amount, merchant_order_id, merchant_group_id, payspot_group_id, payspot_transaction_id, merchant_order_reference, complete, timestamp) VALUES (DEFAULT, ?, ".$merchant_order_id.", ".$merchant_group_id.", ".$payspot_group_id.", ".$payspot_transaction_id.", ".$merchant_order_reference.", 0, ".time().")";
+		$error = $response->Data->Status->ErrorCode;
+
+		if ($merchant_order_id && $payspot_order_id && $payspot_group_id && $payspot_transaction_id && $merchant_order_reference && $merchant_group_id && !$error) {
+
+			$query_string = "INSERT INTO payouts (ID, amount, merchant_order_id, merchant_group_id, payspot_group_id, payspot_transaction_id, merchant_order_reference, complete, status, timestamp) VALUES (DEFAULT, ?, ".$merchant_order_id.", ".$merchant_group_id.", ".$payspot_group_id.", ".$payspot_transaction_id.", ".$merchant_order_reference.", 0, ".$status.", ".time().")";
+
 			$insert_order = $con->prepare($query_string);
 
 			$insert_order->bind_param('i', $amount);
 			$is_inserted = $insert_order->execute();
+
+			if ($is_inserted && $status == "1") {
+				$this->confirm_order($con->insert_id, $merchant_order_id, $merchant_group_id, $payspot_group_id, $merchant_order_reference, $payspot_transaction_id);
+			}		
 		}
 
 		return $is_inserted;	
@@ -232,7 +241,7 @@ class Payspot
 		$con = $this->CON;
 		$url = self::TEST_CHECK_ORDER_ENDPOINT;
 
-		$query_string = "SELECT merchant_order_id AS merchantOrderID, merchant_group_id AS merchantGroupID, payspot_group_id AS paymentGroupID, merchant_order_reference AS merchantReference, payspot_transaction_id AS payspotTransactionID FROM payouts";
+		$query_string = "SELECT merchant_order_id AS merchantOrderID, merchant_group_id AS merchantGroupID, payspot_group_id AS paymentGroupID, merchant_order_reference AS merchantReference, payspot_transaction_id AS payspotTransactionID FROM payouts WHERE complete = 0";
 
 		$payout_rows = mysqli_query($this->CON, $query_string);
 
@@ -251,7 +260,7 @@ class Payspot
 					"Header" => [
 						"Content-type" 		=> "application/json",
 						"CompanyID" 		=> self::COMPANY_ID,
-						"ExternalRequestID" => (string)$this->create_external_request_id(), // not even needed
+						"ExternalRequestID" => null, // not even needed
 						"RequestDateTime" 	=> date("Y-m-d h:m:s"),
 						"MsgType" 			=> "104",
 						"Rnd" 				=> $rnd,
@@ -285,102 +294,105 @@ class Payspot
 	}	
 
 
-	public function confirm_orders() {
+	public function confirm_order($order_id, $merchant_order_id, $merchant_group_id, $payspot_group_id, $merchant_order_reference, $payspot_transaction_id) {
 		$con = $this->CON;
 		$url = self::TEST_CONFIRM_ORDER_ENDPOINT;
 		$rnd = $this->generate_rnd();
 
-		$query_string = "SELECT ID, timestamp, merchant_order_id AS merchantOrderID, merchant_group_id AS merchantGroupID, payspot_group_id AS paymentGroupID, merchant_order_reference AS merchantReference, payspot_transaction_id AS payspotTransactionID FROM payouts WHERE complete = 0 ORDER BY timestamp";
+		$query_string = "SELECT waiter_id, amount, timestamp FROM transactions WHERE ID = " . $merchant_order_id;
+		$result = $con->query($query_string);
+		$transaction_info = $result->fetch_assoc();
 
-		$payout_rows = mysqli_query($this->CON, $query_string);
+		$query_string = "SELECT account_number FROM users WHERE ID = " . $transaction_info["waiter_id"];
+		$result = $con->query($query_string);
+		$waiter_info = $result->fetch_assoc();
 
-		while ($row = $payout_rows->fetch_assoc()) {
-		    $payouts[] = $row;
+		$baksis_fee = (3 / 100) * $transaction_info["amount"];
+		$payspot_fee = 20;
+		$senders_fee = $payspot_fee + $baksis_fee;
+		$beneficiary_amount = $transaction_info["amount"] - $senders_fee;	
+
+		$payout = [
+			"merchantContractID"   => 626,
+			"merchantOrderID"      => $merchant_order_id,
+			"merchantGroupID"      => $merchant_group_id,
+			"paymentGroupID"  	   => $payspot_group_id,		
+			"merchantReference"	   => $merchant_order_reference,
+			"payspotTransactionID" => $payspot_transaction_id,	
+			"beneficiaryAccount"   => $waiter_info["account_number"],
+			"beneficiaryAmount"    => $beneficiary_amount,
+			"valueDate"    		   => date("Y-m-d", $transaction_info["timestamp"])
+		];
+
+		$formatted_payout = array();
+		$formatted_payout["OrderConfirm"][0] = $payout;	
+
+		$data = [
+			"Data" => [
+				"Header" => [
+					"Content-type" 		=> "application/json",
+					"CompanyID" 		=> self::COMPANY_ID,
+					"RequestDateTime" 	=> date("Y-m-d h:m:s"),
+					"MsgType" 			=> "110",
+					"Rnd" 				=> $rnd,
+					"Hash" 				=> $this->generate_hash(110, $rnd),
+					"Language"			=> 1
+				],
+				"Body" => $formatted_payout
+			]
+		];
+
+		$ch = curl_init($url);
+
+		$headers = array(
+			"Content-type: application/json",
+		);
+		
+		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);		
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data, JSON_UNESCAPED_UNICODE));
+
+		$response = curl_exec($ch);
+
+		curl_close($ch);
+
+		$response = json_decode($response);
+
+		$error = $response->Data->Status->ErrorCode;
+
+		ini_set("log_errors", 1);
+		ini_set("error_log", "/var/log/php-fpm/payout.log");
+
+		if ($error) {
+			error_log($error . " - " . $merchant_order_id);
+			return false;
 		}
 
-		foreach($payouts as $key => $payout) {
-			$dt = date( "Y-m-d", $payout["timestamp"]);
-			$date = new DateTime($dt);
-			$now = new DateTime();
-			$diff = $now->diff($date);
+		$status_code = $response->Data->Body->OrderConfirm[0]->statusProcessing;
+		$query_string = "UPDATE payouts SET status = ".$status_code ." WHERE ID = " . $order_id;
+		$is_inserted = $con->query($query_string);
 
-			if($diff->days < 4 && $diff->days !== 0 ) {
+		// if ($status_code == "1" || $status_code == "-1") {
 
-				$formatted_payouts = array();
-				$payout = array('merchantContractID' => 626) + $payout;
+		$query_string = "UPDATE payouts SET status = ".$status_code ." WHERE ID = " . $order_id;
+		$is_inserted = $con->query($query_string);
 
-				$query_string = "SELECT waiter_id, amount, timestamp FROM transactions WHERE ID = " . $payout["merchantOrderID"];
-				$result = $con->query($query_string);
-				$transaction_info = $result->fetch_assoc();
+		if ($status_code !== "1") {
+			error_log("<pre>" .json_encode($response, JSON_PRETTY_PRINT). "<pre/>");
+		}			
 
-				$query_string = "SELECT account_number FROM users WHERE ID = " . $transaction_info["waiter_id"];
-				$result = $con->query($query_string);
-				$waiter_info = $result->fetch_assoc();
+			// $query_string = "SELECT amount FROM wallets WHERE user_id = " . $transaction_info["waiter_id"];
+			// $result = $con->query($query_string);
+			// $wallet = $result->fetch_assoc();
 
-				$payout["beneficiaryAccount"] = $waiter_info["account_number"];
+			// $amount = $wallet["amount"] - $beneficiary_amount;
 
-				$baksis_fee = (3 / 100) * $transaction_info["amount"];
-				$payspot_fee = 20;
-				$senders_fee = $payspot_fee + $baksis_fee;
-				$beneficiary_amount = $transaction_info["amount"] - $senders_fee;	
-					
-				$payout["beneficiaryAmount"] = $beneficiary_amount;
-				$payout["valueDate"] = date("Y-m-d", $transaction_info["timestamp"]);
-				$formatted_payouts["OrderConfirm"][] = $payout;
+			// $query_string = "UPDATE wallets SET amount = '".$amount."' WHERE user_id = " . $transaction_info["waiter_id"];
+			// $amended_wallet = $con->query($query_string);		
 
-
-				$data = [
-					"Data" => [
-						"Header" => [
-							"Content-type" 		=> "application/json",
-							"CompanyID" 		=> self::COMPANY_ID,
-							"RequestDateTime" 	=> date("Y-m-d h:m:s"),
-							"MsgType" 			=> "110",
-							"Rnd" 				=> $rnd,
-							"Hash" 				=> $this->generate_hash(110, $rnd),
-							"Language"			=> 1
-						],
-						"Body" => $formatted_payouts
-					]
-				];
-
-				$ch = curl_init($url);
-
-				$headers = array(
-					"Content-type: application/json",
-				);
-				
-				curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);		
-				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-				curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data, JSON_UNESCAPED_UNICODE));
-
-				$response = curl_exec($ch);
-
-				curl_close($ch);
-
-				$response = json_decode($response);
-
-				echo "<pre>" .json_encode($response, JSON_PRETTY_PRINT). "<pre/>";	
-
-				$status_code = $response->Data->Body->OrderConfirm[0]->statusProcessing;		
-
-				if ($status_code == "-1" || $status_code == "1") {
-					$query_string = "UPDATE payouts SET complete = 1 WHERE ID = " . $payout["ID"];
-					$is_inserted = $con->query($query_string);
-
-					$query_string = "SELECT amount FROM wallets WHERE user_id = " . $transaction_info["waiter_id"];
-					$result = $con->query($query_string);
-					$wallet = $result->fetch_assoc();
-
-					$amount = $wallet["amount"] - $beneficiary_amount;
-
-					$query_string = "UPDATE wallets SET amount = '".$amount."' WHERE user_id = " . $transaction_info["waiter_id"];
-					$amended_wallet = $con->query($query_string);		
-
-				}
-			}else {
-				echo "<br>void-".$payout["merchantOrderID"]."<br>";
-			}
-		}
+		// }
 	}		
 }
+
+// do daily crons call to payspot to check payout status with check_orders() and update accordingly in db, and when a payout is payed out then - that amount from wallet
+// ask rasko about messages from payment approved messages
