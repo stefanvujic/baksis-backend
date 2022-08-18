@@ -240,8 +240,10 @@ class Payspot
 	public function check_orders() {
 		$con = $this->CON;
 		$url = self::TEST_CHECK_ORDER_ENDPOINT;
+		ini_set("log_errors", 1);
+		ini_set("error_log", "/var/log/php-fpm/payout.log");		
 
-		$query_string = "SELECT merchant_order_id AS merchantOrderID, merchant_group_id AS merchantGroupID, payspot_group_id AS paymentGroupID, merchant_order_reference AS merchantReference, payspot_transaction_id AS payspotTransactionID FROM payouts WHERE complete = 0";
+		$query_string = "SELECT ID, merchant_order_id AS merchantOrderID, merchant_group_id AS merchantGroupID, payspot_group_id AS paymentGroupID, merchant_order_reference AS merchantReference, payspot_transaction_id AS payspotTransactionID, timestamp FROM payouts WHERE complete = 0";
 
 		$payout_rows = mysqli_query($this->CON, $query_string);
 
@@ -251,45 +253,72 @@ class Payspot
 
 		foreach($payouts as $key => $payout) {
 
-			$payout = array('merchantContractID' => 626) + $payout;
+			if($payout["timestamp"] > strtotime('-4 days')) {
+				$payout = array('merchantContractID' => 626) + $payout;
 
-			$rnd = $this->generate_rnd();
+				$rnd = $this->generate_rnd();
 
-			$data = [
-				"Data" => [
-					"Header" => [
-						"Content-type" 		=> "application/json",
-						"CompanyID" 		=> self::COMPANY_ID,
-						"ExternalRequestID" => null, // not even needed
-						"RequestDateTime" 	=> date("Y-m-d h:m:s"),
-						"MsgType" 			=> "104",
-						"Rnd" 				=> $rnd,
-						"Hash" 				=> $this->generate_hash(104, $rnd)
-					],
-					"Body" => $payout
-				]
-			];
-			echo "<pre>" .json_encode($data, JSON_PRETTY_PRINT). "<pre/>";	
+				$data = [
+					"Data" => [
+						"Header" => [
+							"Content-type" 		=> "application/json",
+							"CompanyID" 		=> self::COMPANY_ID,
+							"ExternalRequestID" => null, // not even needed
+							"RequestDateTime" 	=> date("Y-m-d h:m:s"),
+							"MsgType" 			=> "104",
+							"Rnd" 				=> $rnd,
+							"Hash" 				=> $this->generate_hash(104, $rnd)
+						],
+						"Body" => $payout
+					]
+				];
+				echo "<pre>" .json_encode($data, JSON_PRETTY_PRINT). "<pre/>";	
 
-			$ch = curl_init($url);
+				$ch = curl_init($url);
 
-			$headers = array(
-				"Content-type: application/json",
-			);
-			
-			curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);		
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-			curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data, JSON_UNESCAPED_UNICODE));
+				$headers = array(
+					"Content-type: application/json",
+				);
+				
+				curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);		
+				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+				curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data, JSON_UNESCAPED_UNICODE));
 
-			$response = curl_exec($ch);
+				$response = curl_exec($ch);
 
-			curl_close($ch);
+				curl_close($ch);
 
-			$response = json_decode($response);	
+				$response = json_decode($response);	
 
-			$merchant_order_id = $response->Data->Body->statusTrans;
+				$status = $response->Data->Body->statusTrans;
 
-			echo "<pre>" .json_encode($response, JSON_PRETTY_PRINT). "<pre/>";			
+				if ($status == "2" || $status == "3") { // remove status 2 in production, status 3 is payed out
+
+					$query_string = "SELECT waiter_id as ID FROM transactions WHERE ID = " . $payout["merchantReference"];
+					$result = $con->query($query_string);
+					$user = $result->fetch_assoc();					
+
+					$query_string = "SELECT amount FROM wallets WHERE user_id = " . $user["ID"];
+					$result = $con->query($query_string);
+					$wallet = $result->fetch_assoc();
+
+					$baksis_fee = (3 / 100) * $payout["amount"];
+					$payspot_fee = 20;
+					$senders_fee = $payspot_fee + $baksis_fee;
+					$beneficiary_amount = $payout["amount"] - $senders_fee;
+
+					$amount = $wallet["amount"] - $beneficiary_amount;
+
+					$query_string = "UPDATE wallets SET amount = '".$amount."' WHERE user_id = " . $user["ID"];
+					$con->query($query_string);
+
+					$query_string = "UPDATE payouts SET complete = 1 WHERE ID = " . $payout["ID"];
+					$con->query($query_string);					
+
+				}			
+			}else {
+				error_log(" ------- payout older than 4 days and incomplete: <pre>" .json_encode($payout, JSON_PRETTY_PRINT). "<pre/>");
+			}		
 		}
 	}	
 
@@ -370,27 +399,18 @@ class Payspot
 
 		$status_code = $response->Data->Body->OrderConfirm[0]->statusProcessing;
 		$query_string = "UPDATE payouts SET status = ".$status_code ." WHERE ID = " . $order_id;
-		$is_inserted = $con->query($query_string);
+		$is_inserted = $con->query($query_string);		
 
-		// if ($status_code == "1" || $status_code == "-1") {
+		if ($status_code == "1" || $status_code == "-1") {
 
-		$query_string = "UPDATE payouts SET status = ".$status_code ." WHERE ID = " . $order_id;
-		$is_inserted = $con->query($query_string);
+			$query_string = "UPDATE payouts SET status = " . $status_code . " WHERE ID = " . $order_id;
+			$is_inserted = $con->query($query_string);	
+
+		}
 
 		if ($status_code !== "1") {
 			error_log("<pre>" .json_encode($response, JSON_PRETTY_PRINT). "<pre/>");
 		}			
-
-			// $query_string = "SELECT amount FROM wallets WHERE user_id = " . $transaction_info["waiter_id"];
-			// $result = $con->query($query_string);
-			// $wallet = $result->fetch_assoc();
-
-			// $amount = $wallet["amount"] - $beneficiary_amount;
-
-			// $query_string = "UPDATE wallets SET amount = '".$amount."' WHERE user_id = " . $transaction_info["waiter_id"];
-			// $amended_wallet = $con->query($query_string);		
-
-		// }
 	}		
 }
 

@@ -38,7 +38,7 @@ if($_FILES['thumbnail'] && !$Validate->avatar_img($_FILES['thumbnail']['tmp_name
 $User = new User($con);	
 $user = $User->register($register_data);
 $response["user"] = $user;
-$response["usefr"] = $register_data;
+
 echo json_encode($response);
 
 die();

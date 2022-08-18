@@ -341,9 +341,13 @@ class User
 			$query_string = ($user_type == "waiter") ? ("SELECT ID, first_name as firstName, last_name as lastName, thumbnail_path as thumbnailPath FROM users WHERE ID = " . $transaction["user_id"]) : ("SELECT ID, first_name as firstName, last_name as lastName, thumbnail_path as thumbnailPath FROM users WHERE ID = " . $transaction["waiter_id"]);
 			$user = mysqli_fetch_assoc(mysqli_query($con, $query_string));
 
+			$query_string = "SELECT complete FROM payouts WHERE merchant_order_reference = " . $transaction["ID"];
+			$payout = mysqli_fetch_assoc(mysqli_query($con, $query_string));			
+
 			$transactions[$key]["amount"] = $transaction["amount"];
 			$transactions[$key]["date"] = date('d/m/Y', $transaction["timestamp"]);
 			$transactions[$key]["timestamp"] = $transaction["timestamp"];
+			$transactions[$key]["complete"] = $payout["complete"];
 			$transactions[$key]["data"] = $user;
 			
 			if ($user["thumbnailPath"]) {

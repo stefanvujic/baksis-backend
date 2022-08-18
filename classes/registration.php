@@ -31,7 +31,7 @@ class Registration
 		$con = $this->CON;
 		$query_string = "SELECT ID FROM users WHERE username = ?";
 		$get_user = $con->prepare($query_string);
-		$get_user->bind_param('s', $this->user->userName);
+		$get_user->bind_param('s', $this->user->username);
 		$get_user->execute();
 		$result = $get_user->get_result();
 		$username_exists = $result->fetch_assoc();
@@ -69,6 +69,8 @@ class Registration
 			}
 
 			return $user;
+		}else {
+			return false;
 		}
 	}
 
