@@ -320,11 +320,11 @@ class User
 		return $trans_id;
 	}
 
-	public function get_transactions($user_id, $user_type) {
+	public function get_transactions($user_id, $user_type, $offset=0) {
 
 		$con = $this->CON;
 
-		$query_string = ($user_type == "waiter") ? ("SELECT * FROM transactions WHERE waiter_id = ? ORDER BY timestamp DESC") : ("SELECT * FROM transactions WHERE user_id = ? ORDER BY timestamp DESC");
+		$query_string = ($user_type == "waiter") ? ("SELECT * FROM transactions WHERE waiter_id = ? ORDER BY timestamp DESC LIMIT 10 OFFSET " . $offset . "") : ("SELECT * FROM transactions WHERE user_id = ? ORDER BY timestamp DESC LIMIT 10 OFFSET " . $offset . "");
 		$get_transactions = $con->prepare($query_string);
 		$get_transactions->bind_param('i', $user_id);
 		$get_transactions->execute();

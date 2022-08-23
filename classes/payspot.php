@@ -413,6 +413,3 @@ class Payspot
 		}			
 	}		
 }
-
-// do daily crons call to payspot to check payout status with check_orders() and update accordingly in db, and when a payout is payed out then - that amount from wallet
-// ask rasko about messages from payment approved messages
