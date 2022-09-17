@@ -1,9 +1,7 @@
 <?php
 
 function password_recovery_email($recipient, $token) {
-
-	require 'email_template.php';
-
+	
 	$to      = $recipient;
 	$subject = 'Baksis; Povrati sifru';
 

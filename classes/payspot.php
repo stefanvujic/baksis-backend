@@ -40,7 +40,8 @@ class Payspot
 					"RequestDateTime" 	=> date("Y-m-d h:m:s"),
 					"MsgType" 			=> "51",
 					"Rnd" 				=> $rnd,
-					"Hash" 				=> $this->generate_hash(51, $rnd)
+					"Hash" 				=> $this->generate_hash(51, $rnd),
+					"Language" 			=> 1
 				],
 				"Body" => [
 					"merchantContractID"  	=>	626, 
@@ -50,7 +51,7 @@ class Payspot
 					"paymentDate" 			=> 	date("Y-m-d"),
 					"transtype"				=>	"PreAuth",
 					"paymentType"			=>	1,
-					"language"				=>	1,
+					// "language"				=>	1,
 				]
 			]
 		];	
@@ -113,7 +114,7 @@ class Payspot
 			$result = $user_info->get_result();
 			$user_info = $result->fetch_assoc();	
 
-			$transaction["debtorName"] = $user_info["first_name"] . " " . $user_info["first_name"];
+			$transaction["debtorName"] = $user_info["first_name"] . " " . $user_info["last_name"];
 			$transaction["debtorAddress"] = $user_info["address"];
 			$transaction["debtorCity"] = $user_info["city"];					
 		}
@@ -127,7 +128,7 @@ class Payspot
 
 		$transaction["beneficiaryAccount"] = $waiter_info["account_number"];
 
-		$transaction["beneficiaryName"] = $waiter_info["first_name"] . " " . $waiter_info["first_name"];
+		$transaction["beneficiaryName"] = $waiter_info["first_name"] . " " . $waiter_info["last_name"];
 		$transaction["beneficiaryAddress"] = $waiter_info["address"];
 		$transaction["beneficiaryCity"] = $waiter_info["city"];
 
@@ -182,13 +183,12 @@ class Payspot
 					"RequestDateTime" 	=> date("Y-m-d h:m:s"),
 					"MsgType" 			=> "101",
 					"Rnd" 				=> $rnd,
-					"Hash" 				=> $this->generate_hash(101, $rnd)
+					"Hash" 				=> $this->generate_hash(101, $rnd),
+					"Language" 			=> 1
 				],
 				"Body" => $order
 			]
 		];	
-
-		//echo "<pre>" .json_encode($data, JSON_PRETTY_PRINT). "<pre/>";	
 
 		$ch = curl_init($url);
 
@@ -207,18 +207,18 @@ class Payspot
 
 		$response = json_decode($response);
 
-		$log_output[] = $response;
+		$log_output[] = $response;		
 
-		$merchant_order_id = $response->Data->Body->PaymentOrderGroup->merchantOrderID;
-		$payspot_order_id = $response->Data->Body->PaymentOrderGroup->paySpotOrderID;
-		$merchant_group_id = $response->Data->Body->PaymentOrderGroup->merchantGroupID;
-		$payspot_group_id = $response->Data->Body->PaymentOrderGroup->payspotGroupID;
-		$payspot_transaction_id = $response->Data->Body->PaymentOrderGroup->Orders[0]->payspotTransactionID;
-		$merchant_order_reference = $response->Data->Body->PaymentOrderGroup->Orders[0]->merchantOrderReference;
+		$merchant_order_id = $response->data->body->paymentOrderGroup->merchantOrderID;
+		$payspot_order_id = $response->data->body->paymentOrderGroup->paySpotOrderID;
+		$merchant_group_id = $response->data->body->paymentOrderGroup->merchantGroupID;
+		$payspot_group_id = $response->data->body->paymentOrderGroup->payspotGroupID;
+		$payspot_transaction_id = $response->data->body->paymentOrderGroup->orders[0]->payspotTransactionID;
+		$merchant_order_reference = $response->data->body->paymentOrderGroup->orders[0]->merchantOrderReference;
 
-		$status = $response->Data->Body->PaymentOrderGroup->Orders[0]->statusProcessing;
+		$status = $response->data->body->paymentOrderGroup->orders[0]->statusProcessing;
 
-		$error = $response->Data->Status->ErrorCode;
+		$error = $response->data->status->errorCode;
 
 		if ($merchant_order_id && $payspot_order_id && $payspot_group_id && $payspot_transaction_id && $merchant_order_reference && $merchant_group_id && !$error) {
 
@@ -240,6 +240,7 @@ class Payspot
 	public function check_orders() {
 		$con = $this->CON;
 		$url = self::TEST_CHECK_ORDER_ENDPOINT;
+		// ini_set("display_errors", 1);
 		ini_set("log_errors", 1);
 		ini_set("error_log", "/var/log/php-fpm/payout.log");		
 
@@ -261,17 +262,19 @@ class Payspot
 				$data = [
 					"Data" => [
 						"Header" => [
-							"Content-type" 		=> "application/json",
+							// "Content-type" 		=> "application/json",
 							"CompanyID" 		=> self::COMPANY_ID,
 							"ExternalRequestID" => null, // not even needed
 							"RequestDateTime" 	=> date("Y-m-d h:m:s"),
 							"MsgType" 			=> "104",
 							"Rnd" 				=> $rnd,
-							"Hash" 				=> $this->generate_hash(104, $rnd)
+							"Hash" 				=> $this->generate_hash(104, $rnd),
+							// "Language" 			=> 1
 						],
 						"Body" => $payout
 					]
 				];
+
 				echo "<pre>" .json_encode($data, JSON_PRETTY_PRINT). "<pre/>";	
 
 				$ch = curl_init($url);
@@ -290,7 +293,9 @@ class Payspot
 
 				$response = json_decode($response);	
 
-				$status = $response->Data->Body->statusTrans;
+				echo "<pre>" .json_encode($response, JSON_PRETTY_PRINT). "<pre/>";	
+
+				$status = $response->data->body->statusTrans;
 
 				if ($status == "2" || $status == "3") { // remove status 2 in production, status 3 is payed out
 
@@ -317,7 +322,7 @@ class Payspot
 
 				}			
 			}else {
-				error_log(" ------- payout older than 4 days and incomplete: <pre>" .json_encode($payout, JSON_PRETTY_PRINT). "<pre/>");
+				// error_log(" ------- payout older than 4 days and incomplete: <pre>" .json_encode($payout, JSON_PRETTY_PRINT). "<pre/>");
 			}		
 		}
 	}	
@@ -345,7 +350,7 @@ class Payspot
 			"merchantContractID"   => 626,
 			"merchantOrderID"      => $merchant_order_id,
 			"merchantGroupID"      => $merchant_group_id,
-			"paymentGroupID"  	   => $payspot_group_id,		
+			"payspotGroupID"  	   => $payspot_group_id,		
 			"merchantReference"	   => $merchant_order_reference,
 			"payspotTransactionID" => $payspot_transaction_id,	
 			"beneficiaryAccount"   => $waiter_info["account_number"],
@@ -387,7 +392,7 @@ class Payspot
 
 		$response = json_decode($response);
 
-		$error = $response->Data->Status->ErrorCode;
+		$error = $response->data->status->errorCode;
 
 		ini_set("log_errors", 1);
 		ini_set("error_log", "/var/log/php-fpm/payout.log");
@@ -397,7 +402,7 @@ class Payspot
 			return false;
 		}
 
-		$status_code = $response->Data->Body->OrderConfirm[0]->statusProcessing;
+		$status_code = $response->data->body->orderConfirm[0]->statusProcessing;
 		$query_string = "UPDATE payouts SET status = ".$status_code ." WHERE ID = " . $order_id;
 		$is_inserted = $con->query($query_string);		
 
