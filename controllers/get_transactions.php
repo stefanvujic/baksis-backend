@@ -29,7 +29,7 @@ if ($Session->is_expired($data["token"])) {
 	die();
 }
 
-$transactions = $User->get_transactions($data["userId"], $data["userType"], $data["offset"]);
+$transactions = $User->get_transactions($data["userId"], $data["userType"], $data["offset"]); //TO DO: VALIDATE OFFSET!!!!!
 
 echo json_encode($transactions);
 

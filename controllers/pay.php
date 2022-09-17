@@ -44,24 +44,9 @@ $WSPay->set_amount($data["amount"]);
 $transaction_authorized = $WSPay->check_transaction($data["WSPayID"], $data["signature"]);
 if(!$transaction_authorized) {
 	$response["transaction"] = false;
+	$response["check_transaction"] = false;
 	echo json_encode($response);
 	die();
-}
-
-$transaction_completed = $WSPay->complete_transaction($data["wspayOrderId"], $data["approvalCode"], $data["stan"]);
-if(!$transaction_completed) {
-	$response["transaction"] = false;
-	echo json_encode($response);
-	die();
-}
-
-$amount_to_save = (5 / 100) * $data["amount"];
-
-if (!$User->add_rating($data["waiterID"], $data["waiterRating"])) { //put underneath payspot
-	$response["ratingUpdateError"] = true;
-	$response["paymentSuccessful"] = false;
-	echo json_encode($response);
-	die();		
 }
 
 if (!$User->add_funds($data["waiterID"], $data["amount"])) { //put underneath payspot
@@ -84,18 +69,32 @@ if (!$trans_id) {
 	die();
 }
 
+if (!$User->add_rating($data["waiterID"], $data["waiterRating"])) { //put underneath payspot
+	$response["ratingUpdateError"] = true;
+	$response["paymentSuccessful"] = false;
+	echo json_encode($response);
+	die();		
+}
+
+$transaction_completed = $WSPay->complete_transaction($data["wspayOrderId"], $data["approvalCode"], $data["stan"]);
+if(!$transaction_completed) {
+	$response["transaction"] = false;
+	$response["complete_transaction"] = false;
+	echo json_encode($response);
+	die();
+}
+
 $Payspot = new Payspot($con);
 $payment_info = $Payspot->send_payment_info($data["amount"], (string)$trans_id);
-$payspot_order_id = $payment_info->Data->Body->paySpotOrderID;
+$payspot_order_id = $payment_info->data->body->paySpotOrderID;
 if(!$payspot_order_id) {
 	$response["payspot"] = false;
 	echo json_encode($response);
 	die();
 }
 
-$insert_error = $Payspot->insert_payment_order((int)$data["amount"], (string)$trans_id, (int)$data["userId"], (int)$data["waiterID"], (string)$payspot_order_id); //get transaction amount from wspay response, not secure like this
-$insert_error = $order_info->Data->Status->ErrorCode;
-if($insert_error) {
+$insert_order = $Payspot->insert_payment_order((int)$data["amount"], (string)$trans_id, (int)$data["userId"], (int)$data["waiterID"], (string)$payspot_order_id); //get transaction amount from wspay response, 
+if(!$insert_order) {
 	$response["payspot"] = false;
 	echo json_encode($response);
 	die();
@@ -108,6 +107,8 @@ $waiter = $User->basic_details($data["waiterID"]);
 payment_email($waiter["email"], $waiter["firstName"] . " " . $waiter["lastName"], $data["amount"]);
 
 $response["transactionStatus"] = $transaction_authorized;
+$response["transID"] = $trans_id;
+
 echo json_encode($response);
 
 die();
