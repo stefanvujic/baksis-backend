@@ -21,10 +21,10 @@ class Login
 	private function get_user() {
 
 		$con = $this->CON;
-		$query = $con->prepare("SELECT ID, username as userName, email, first_name as firstName, last_name as lastName, address, city, country, postal_code as postalCode, type, thumbnail_path as thumbnailPath, account_number as accountNumber FROM users WHERE password = ? AND username = ?");
+		$query = $con->prepare("SELECT ID, username as userName, email, first_name as firstName, last_name as lastName, address, city, country, postal_code as postalCode, type, thumbnail_path as thumbnailPath, account_number as accountNumber FROM users WHERE password = ? AND username = ? OR email = ? AND password = ?");
 
 		$password = User::hash_password($this->password);
-		$query->bind_param('ss', $password, $this->username);
+		$query->bind_param('ssss', $password, $this->username, $this->username, $password);
 		$query->execute();
 
 		$this->user = $query->get_result();

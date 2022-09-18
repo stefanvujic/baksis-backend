@@ -12,11 +12,20 @@ $Validate = new validation;
 $response = array();
 
 $data = json_decode(file_get_contents("php://input"), true);
+//check if string in email format
 
-if(!$Validate->username($data["username"]) || !$Validate->password($data["password"])) {
-	$response["user"] = false;
-	echo json_encode($response);
-	die();
+if(filter_var($data["username"], FILTER_VALIDATE_EMAIL)) {
+	if(!$Validate->email($data["username"]) || !$Validate->password($data["password"])) {
+		$response["user"] = false;
+		echo json_encode($response);
+		die();
+	}
+}else {
+	if(!$Validate->username($data["username"]) || !$Validate->password($data["password"])) {
+		$response["user"] = false;
+		echo json_encode($response);
+		die();
+	}
 }
 
 $User = new User($con);	
