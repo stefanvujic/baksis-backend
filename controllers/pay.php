@@ -8,6 +8,7 @@ require '../mysql_auth.php';
 require '../classes/user.php';
 require '../classes/validation.php';
 require '../emails/payment_waiter_email.php';
+require '../emails/payment_sender_email.php';
 require '../classes/WSPay.php';
 require '../classes/payspot.php';
 
@@ -105,6 +106,7 @@ mysqli_query($con, $query_string);
 
 $waiter = $User->basic_details($data["waiterID"]);
 waiter_payment_email($waiter["email"], $waiter["firstName"] . " " . $waiter["lastName"], $data["amount"]);
+user_payment_email($trans_id, $data["amount"], $data["userEmail"], $waiter["firstName"] . " " . $waiter["lastName"]);
 
 $response["transactionStatus"] = $transaction_authorized;
 $response["transID"] = $trans_id;
