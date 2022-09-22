@@ -28,10 +28,10 @@ function user_payment_email($transaction_id, $amount, $user_email, $waiter_name,
 	$message .= "<p style='font-size: 14px;'>Kod Odobrenja: " . $approval_code . "</p>";
 	$message .= "<p style='font-size: 14px;'>ID: " . $wspay_order_id . "</p>";
 	$message .= "<p style='font-size: 14px;'>Kod Transakcije: " . $transaction_id . "</p>";
-    $message .= "<p style='font-size: 14px;'>Ukupan Iznos: " . $amount . ".00 (U cenu je uračunat PDV)</p>";
+    $message .= "<p style='font-size: 14px;'>Ukupan Iznos: " . $amount . ".00rsd (U cenu je uračunat PDV)</p>";
     $message .= "<p style='font-size: 14px;'>Provizija: 20.00rsd + 3%</p>";
-    $message .= "<p style='font-size: 14px;'>Iznos Provizije: " . $senders_fee . ".00</p>";
-    $message .= "<p style='font-size: 14px;'>Iznos sa provizijom: " . $beneficiary_amount . ".00</p>";
+    $message .= "<p style='font-size: 14px;'>Iznos Provizije: " . $senders_fee . ".00rsd</p>";
+    $message .= "<p style='font-size: 14px;'>Iznos sa provizijom: " . $beneficiary_amount . ".00rsd</p>";
 
 	$message .= "<p>S poštovanjem,</p>";
 	$message .= "<p>Bakšiš</p>";
