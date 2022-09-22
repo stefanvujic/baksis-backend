@@ -35,6 +35,9 @@ function user_payment_email($transaction_id, $amount, $user_email, $waiter_name,
 
 	$message .= "<p>S poštovanjem,</p>";
 	$message .= "<p>Bakšiš</p>";
+	$message .= "<p>Coderum DOO Valjevo</p>";
+	$message .= "<p>PIB: 112934793</p>";
+	$message .= "<p>Karađorđeva 149, Valjevo, Srbija 14000</p>";
 
 	$content = $message;
 
