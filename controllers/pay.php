@@ -106,7 +106,7 @@ mysqli_query($con, $query_string);
 
 $waiter = $User->basic_details($data["waiterID"]);
 waiter_payment_email($waiter["email"], $waiter["firstName"] . " " . $waiter["lastName"], $data["amount"]);
-user_payment_email($trans_id, $data["amount"], $data["userEmail"], $waiter["firstName"] . " " . $waiter["lastName"]);
+user_payment_email($trans_id, $data["amount"], $data["userEmail"], $waiter["firstName"] . " " . $waiter["lastName"], $data["approvalCode"], $data["wspayOrderId"], $data["timestamp"], $data["userEmail"]);
 
 $response["transactionStatus"] = $transaction_authorized;
 $response["transID"] = $trans_id;
