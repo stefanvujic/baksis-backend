@@ -1,6 +1,6 @@
 <?php
 
-function user_payment_email($transaction_id, $amount, $user_email, $waiter_name, $approval_code, $wspay_order_id, $timestamp, $userEmail) {
+function user_payment_email($transaction_id, $amount, $user_email, $waiter_name, $approval_code, $wspay_order_id, $timestamp, $userEmail, $success) {
 
     // this is done multiple times throughtout the project, make a function for it
     $baksis_fee = (3 / 100) * $amount;
@@ -9,7 +9,7 @@ function user_payment_email($transaction_id, $amount, $user_email, $waiter_name,
     $beneficiary_amount = $amount - $senders_fee;
 
 	$to      = $user_email;
-	$subject = 'Bakšiš je uplaćen korisniku - ' . $waiter_name;
+	$subject = $success ? ('Bakšiš je uplaćen korisniku - ' . $waiter_name) : ('Bakšiš nije uplaćen korisniku - ' . $waiter_name);
 
 	$date = substr($timestamp, 0, 8);
 	$year = substr($date, 0, 4);
@@ -22,8 +22,9 @@ function user_payment_email($transaction_id, $amount, $user_email, $waiter_name,
 	$minute = substr($time, 2, 2);
 	$second = substr($time, 4, 2);
 
+	$success ? ($message = "<p style='font-size: 14px; color: green;'>Uspešno</p>") : ($message = "<p style='font-size: 14px; color: red;'>Neuspešno</p>");
 
-	$message = "<p style='font-size: 14px;'>Datum: " . $day . "/" . $month . "/" . $year . " " . $hour . ":" . $minute . ":" . $second . "</p>";
+	$message .= "<p style='font-size: 14px;'>Datum: " . $day . "/" . $month . "/" . $year . " " . $hour . ":" . $minute . ":" . $second . "</p>";
 	$message .= "<p style='font-size: 14px;'>Email: " . $userEmail . "</p>";
 	$message .= "<p style='font-size: 14px;'>Kod Odobrenja: " . $approval_code . "</p>";
 	$message .= "<p style='font-size: 14px;'>ID: " . $wspay_order_id . "</p>";

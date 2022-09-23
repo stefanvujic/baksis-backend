@@ -47,6 +47,7 @@ if(!$transaction_authorized) {
 	$response["transaction"] = false;
 	$response["check_transaction"] = false;
 	echo json_encode($response);
+	user_payment_email($trans_id, $data["amount"], $data["userEmail"], $waiter["firstName"] . " " . $waiter["lastName"], $data["approvalCode"], $data["wspayOrderId"], $data["timestamp"], $data["userEmail"], $success=0);
 	die();
 }
 
@@ -82,6 +83,7 @@ if(!$transaction_completed) {
 	$response["transaction"] = false;
 	$response["complete_transaction"] = false;
 	echo json_encode($response);
+	user_payment_email($trans_id, $data["amount"], $data["userEmail"], $waiter["firstName"] . " " . $waiter["lastName"], $data["approvalCode"], $data["wspayOrderId"], $data["timestamp"], $data["userEmail"], $success=0);
 	die();
 }
 
@@ -106,7 +108,7 @@ mysqli_query($con, $query_string);
 
 $waiter = $User->basic_details($data["waiterID"]);
 waiter_payment_email($waiter["email"], $waiter["firstName"] . " " . $waiter["lastName"], $data["amount"]);
-user_payment_email($trans_id, $data["amount"], $data["userEmail"], $waiter["firstName"] . " " . $waiter["lastName"], $data["approvalCode"], $data["wspayOrderId"], $data["timestamp"], $data["userEmail"]);
+user_payment_email($trans_id, $data["amount"], $data["userEmail"], $waiter["firstName"] . " " . $waiter["lastName"], $data["approvalCode"], $data["wspayOrderId"], $data["timestamp"], $data["userEmail"], $success=1);
 
 $response["transactionStatus"] = $transaction_authorized;
 $response["transID"] = $trans_id;
